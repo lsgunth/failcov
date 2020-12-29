@@ -25,6 +25,7 @@ static bool force_libc;
 
 struct hash_entry {
 	unsigned long long hash;
+	char *backtrace;
 	struct hash_entry *next;
 };
 
@@ -32,6 +33,7 @@ struct hash_entry {
 #define HASH_TABLE_MASK (HASH_TABLE_SIZE - 1)
 static pthread_mutex_t hash_table_mutex = PTHREAD_MUTEX_INITIALIZER;
 static struct hash_entry *callsite_table[HASH_TABLE_SIZE];
+static struct hash_entry *allocation_table[HASH_TABLE_SIZE];
 
 /*
  * Simple hash function based on
@@ -75,6 +77,30 @@ out:
 	return ret;
 }
 
+static struct hash_entry *hash_table_pop(unsigned long long hash,
+					 struct hash_entry **table)
+{
+	struct hash_entry **slot, *ret = NULL;
+
+	pthread_mutex_lock(&hash_table_mutex);
+
+	slot = &table[hash & HASH_TABLE_MASK];
+
+	while (*slot) {
+		if ((*slot)->hash == hash) {
+			ret = *slot;
+			*slot = ret->next;
+			goto out;
+		}
+
+		slot = &((*slot)->next);
+	}
+
+out:
+	pthread_mutex_unlock(&hash_table_mutex);
+	return ret;
+}
+
 static void __exit_error(const char *env, int err)
 {
 	const char *errstr = getenv(env);
@@ -106,6 +132,7 @@ static struct hash_entry *create_hash_entry(void)
 	}
 
 	h->next = NULL;
+	h->backtrace = NULL;
 	h->hash = HASH_INIT;
 
 	return h;
@@ -214,8 +241,9 @@ static void print_backtrace(void)
 
 static void print_injection(void)
 {
-	fprintf(stderr, "FAILCOV: Injecting failure at:\n");
+	fprintf(stderr, "\nFAILCOV: Injecting failure at:\n");
 	print_backtrace();
+	fprintf(stderr, "\n");
 }
 
 static bool should_fail(const char *name)
@@ -251,6 +279,74 @@ out:
 	return ret;
 }
 
+static struct hash_entry *create_hash_entry_backtrace(void)
+{
+	char name[4096], backtrace[4096];
+	struct hash_entry *h;
+	unw_cursor_t cursor;
+	unw_context_t uc;
+	unw_word_t off;
+	int boff = 0;
+	int ret;
+
+	unw_getcontext(&uc);
+	unw_init_local(&cursor, &uc);
+
+	while (unw_step(&cursor) > 0) {
+		ret = unw_get_proc_name(&cursor, name, sizeof(name), &off);
+		if (ret != 0)
+			strcpy(name, "unknown");
+
+		boff += snprintf(backtrace + boff, sizeof(backtrace) - boff,
+				 "    %s+0x%lx\n", name, off);
+	}
+
+	h = create_hash_entry();
+	h->backtrace = strdup(backtrace);
+
+	return h;
+}
+
+static void track_allocation(void *ptr)
+{
+	struct hash_entry *h;
+
+	if (force_libc)
+		return;
+
+	force_libc = true;
+
+	h = create_hash_entry_backtrace();
+	h->hash = (intptr_t)ptr;
+	hash_table_insert(h, allocation_table);
+
+	force_libc = false;
+}
+
+static void track_free(void *ptr)
+{
+	struct hash_entry *h;
+
+	if (force_libc)
+		return;
+
+	force_libc = true;
+
+	h = hash_table_pop((intptr_t)ptr, allocation_table);
+	if (!h) {
+		fprintf(stderr,
+			"FAILCOV: Attempted to free untracked pointer %p at\n",
+			ptr);
+		print_backtrace();
+	} else {
+		if (h->backtrace)
+			free(h->backtrace);
+		free(h);
+	}
+
+	force_libc = false;
+}
+
 static void *early_allocator(size_t size)
 {
 	static char early_mem[4096];
@@ -284,29 +380,64 @@ static void *early_allocator(size_t size)
 
 void *malloc(size_t size)
 {
+	void *ret;
+
 	if (use_early_allocator)
 		return early_allocator(size);
 
-	return handle_call(malloc, void *, NULL, ENOMEM, size);
+	ret = handle_call(malloc, void *, NULL, ENOMEM, size);
+	if (ret)
+		track_allocation(ret);
+
+	return ret;
 }
 
 void *calloc(size_t nmemb, size_t size)
 {
+	void *ret;
+
 	if (use_early_allocator)
 		return early_allocator(nmemb * size);
 
-	return handle_call(calloc, void *, NULL, ENOMEM, nmemb, size);
+	ret = handle_call(calloc, void *, NULL, ENOMEM, nmemb, size);
+	if (ret)
+		track_allocation(ret);
+
+	return ret;
 }
 
 void *realloc(void *ptr, size_t size)
 {
-	return handle_call(realloc, void *, NULL, ENOMEM, ptr, size);
+	void *ret;
+
+	ret = handle_call(realloc, void *, NULL, ENOMEM, ptr, size);
+	if (ret) {
+		track_allocation(ret);
+		track_free(ptr);
+	}
+
+	return ret;
+}
+
+void free(void *ptr)
+{
+	call_super(free, void, ptr);
+	if (ptr)
+		track_free(ptr);
 }
 
 void *reallocarray(void *ptr, size_t nmemb, size_t size)
 {
-	return handle_call(reallocarray, void *, NULL, ENOMEM, ptr, nmemb,
-			   size);
+	void *ret;
+
+	ret = handle_call(reallocarray, void *, NULL, ENOMEM, ptr, nmemb,
+			  size);
+	if (ret) {
+		track_allocation(ret);
+		track_free(ptr);
+	}
+
+	return ret;
 }
 
 int creat(const char *pathname, mode_t mode)
@@ -347,4 +478,75 @@ ssize_t read(int fd, void *buf, size_t count)
 ssize_t write(int fd, const void *buf, size_t count)
 {
 	return handle_call(write, int, -1, ENOSPC, fd, buf, count);
+}
+
+static bool should_ignore_leak(const char *backtrace)
+{
+	char *ignore = getenv("FAILCOV_LEAK_IGNORE");
+	char *ignore_cpy, *tok;
+
+	if (strstr(backtrace, "_IO_file_doallocate"))
+		return true;
+
+	if (!ignore)
+		return false;
+
+	ignore_cpy = strdup(ignore);
+	if (!ignore_cpy)
+		return false;
+
+	tok = strtok(ignore, " ");
+	while (tok) {
+		if (strstr(backtrace, tok)) {
+			free(ignore_cpy);
+			return true;
+		}
+
+		tok = strtok(NULL, " ");
+	}
+
+	free(ignore_cpy);
+	return false;
+}
+
+static void print_memory_leak(struct hash_entry *h)
+{
+	fprintf(stderr,
+		"\nFAILCOV: Possible memory leak for 0x%llx allocated at:\n",
+	        h->hash);
+
+	if (h->backtrace)
+		fprintf(stderr, "%s", h->backtrace);
+	else
+		fprintf(stderr, "unknown\n");
+}
+
+__attribute__((destructor))
+static void check_leaks(void)
+{
+	struct hash_entry *h;
+	bool found_leak = false;
+	int i;
+
+	force_libc = true;
+
+	for (i = 0; i < HASH_TABLE_SIZE; i++) {
+		h = allocation_table[i];
+		while (h) {
+			if (!h->backtrace ||
+			    !should_ignore_leak(h->backtrace)) {
+				found_leak = true;
+				print_memory_leak(h);
+			}
+			if (h->backtrace)
+				free(h->backtrace);
+			free(h);
+			h = h->next;
+		}
+	}
+
+	if (found_leak)
+		__exit_error("FAILCOV_EXIT_LEAK", 33);
+
+	force_libc = false;
 }
