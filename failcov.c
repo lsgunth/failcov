@@ -34,6 +34,7 @@ struct hash_entry {
 static pthread_mutex_t hash_table_mutex = PTHREAD_MUTEX_INITIALIZER;
 static struct hash_entry *callsite_table[HASH_TABLE_SIZE];
 static struct hash_entry *allocation_table[HASH_TABLE_SIZE];
+static struct hash_entry *fd_table[HASH_TABLE_SIZE];
 
 /*
  * Simple hash function based on
@@ -347,6 +348,46 @@ static void track_free(void *ptr)
 	force_libc = false;
 }
 
+static void track_open(int fd)
+{
+	struct hash_entry *h;
+
+	if (force_libc)
+		return;
+
+	force_libc = true;
+
+	h = create_hash_entry_backtrace();
+	h->hash = fd;
+	hash_table_insert(h, fd_table);
+
+	force_libc = false;
+}
+
+static void track_close(int fd)
+{
+	struct hash_entry *h;
+
+	if (force_libc)
+		return;
+
+	force_libc = true;
+
+	h = hash_table_pop(fd, fd_table);
+	if (!h) {
+		fprintf(stderr,
+			"FAILCOV: Attempted to close untracked file descriptor %d at\n",
+			fd);
+		print_backtrace();
+	} else {
+		if (h->backtrace)
+			free(h->backtrace);
+		free(h);
+	}
+
+	force_libc = false;
+}
+
 static void *early_allocator(size_t size)
 {
 	static char early_mem[4096];
@@ -442,32 +483,59 @@ void *reallocarray(void *ptr, size_t nmemb, size_t size)
 
 int creat(const char *pathname, mode_t mode)
 {
-	return handle_call(creat, int, -1, EACCES, pathname, mode);
+	int fd;
+
+	fd = handle_call(creat, int, -1, EACCES, pathname, mode);
+	if (fd != -1)
+		track_open(fd);
+
+	return fd;
 }
 
 int open(const char *pathname, int flags, ...)
 {
 	va_list ap;
 	mode_t mode;
+	int fd;
 
 	va_start(ap, flags);
 	mode = va_arg(ap, mode_t);
 	va_end(ap);
 
-	return handle_call(open, int, -1, EACCES, pathname, flags, mode);
+	fd = handle_call(open, int, -1, EACCES, pathname, flags, mode);
+	if (fd != -1)
+		track_open(fd);
+
+	return fd;
 }
 
 int openat(int dirfd, const char *pathname, int flags, ...)
 {
 	va_list ap;
 	mode_t mode;
+	int fd;
 
 	va_start(ap, flags);
 	mode = va_arg(ap, mode_t);
 	va_end(ap);
 
-	return handle_call(openat, int, -1, EACCES, dirfd, pathname, flags,
-			   mode);
+	fd = handle_call(openat, int, -1, EACCES, dirfd, pathname, flags,
+			 mode);
+	if (fd != -1)
+		track_open(fd);
+
+	return fd;
+}
+
+int close(int fd)
+{
+	int ret;
+
+	ret = call_super(close, int, fd);
+	if (!ret)
+		track_close(fd);
+
+	return ret;
 }
 
 ssize_t read(int fd, void *buf, size_t count)
@@ -521,6 +589,18 @@ static void print_memory_leak(struct hash_entry *h)
 		fprintf(stderr, "unknown\n");
 }
 
+static void print_fd_leak(struct hash_entry *h)
+{
+	fprintf(stderr,
+		"\nFAILCOV: Possible file descriptor leak for %lld opened at:\n",
+	        h->hash);
+
+	if (h->backtrace)
+		fprintf(stderr, "%s", h->backtrace);
+	else
+		fprintf(stderr, "unknown\n");
+}
+
 __attribute__((destructor))
 static void check_leaks(void)
 {
@@ -537,6 +617,19 @@ static void check_leaks(void)
 			    !should_ignore_leak(h->backtrace)) {
 				found_leak = true;
 				print_memory_leak(h);
+			}
+			if (h->backtrace)
+				free(h->backtrace);
+			free(h);
+			h = h->next;
+		}
+
+		h = fd_table[i];
+		while (h) {
+			if (!h->backtrace ||
+			    !should_ignore_leak(h->backtrace)) {
+				found_leak = true;
+				print_fd_leak(h);
 			}
 			if (h->backtrace)
 				free(h->backtrace);
