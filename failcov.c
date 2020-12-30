@@ -22,6 +22,7 @@
 
 static volatile bool use_early_allocator;
 static bool force_libc;
+static bool found_bug;
 
 struct hash_entry {
 	unsigned long long hash;
@@ -339,6 +340,7 @@ static void track_destroy(unsigned long long hash, struct hash_entry **table,
 	if (!h) {
 		fprintf(stderr, msg, hash);
 		print_backtrace();
+		found_bug = true;
 	} else {
 		if (h->backtrace)
 			free(h->backtrace);
@@ -569,7 +571,6 @@ __attribute__((destructor))
 static void check_leaks(void)
 {
 	struct hash_entry *h;
-	bool found_leak = false;
 	int i;
 
 	force_libc = true;
@@ -579,7 +580,7 @@ static void check_leaks(void)
 		while (h) {
 			if (!h->backtrace ||
 			    !should_ignore_leak(h->backtrace)) {
-				found_leak = true;
+				found_bug = true;
 				print_memory_leak(h);
 			}
 			if (h->backtrace)
@@ -592,7 +593,7 @@ static void check_leaks(void)
 		while (h) {
 			if (!h->backtrace ||
 			    !should_ignore_leak(h->backtrace)) {
-				found_leak = true;
+				found_bug = true;
 				print_fd_leak(h);
 			}
 			if (h->backtrace)
@@ -602,8 +603,8 @@ static void check_leaks(void)
 		}
 	}
 
-	if (found_leak)
-		__exit_error("FAILCOV_EXIT_LEAK", 33);
+	if (found_bug)
+		__exit_error("FAILCOV_BUG_FOUND", 33);
 
 	force_libc = false;
 }
