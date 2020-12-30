@@ -544,23 +544,10 @@ static bool should_ignore_leak(const char *backtrace)
 	return false;
 }
 
-static void print_memory_leak(struct hash_entry *h)
+static void print_leak(struct hash_entry *h, const char *msg)
 {
-	fprintf(stderr,
-		TAG "Possible memory leak for 0x%llx allocated at:\n",
-	        h->hash);
-
-	if (h->backtrace)
-		fprintf(stderr, "%s", h->backtrace);
-	else
-		fprintf(stderr, "unknown\n");
-}
-
-static void print_fd_leak(struct hash_entry *h)
-{
-	fprintf(stderr,
-		TAG "Possible file descriptor leak for %lld opened at:\n",
-	        h->hash);
+	found_bug = true;
+	fprintf(stderr, msg, h->hash);
 
 	if (h->backtrace)
 		fprintf(stderr, "%s", h->backtrace);
@@ -581,8 +568,7 @@ static void check_leaks(void)
 		while (h) {
 			if (!h->backtrace ||
 			    !should_ignore_leak(h->backtrace)) {
-				found_bug = true;
-				print_memory_leak(h);
+				print_leak(h, TAG "Possible memory leak for 0x%llx allocated at:\n");
 			}
 			if (h->backtrace)
 				free(h->backtrace);
@@ -594,8 +580,7 @@ static void check_leaks(void)
 		while (h) {
 			if (!h->backtrace ||
 			    !should_ignore_leak(h->backtrace)) {
-				found_bug = true;
-				print_fd_leak(h);
+				print_leak(h, TAG "Possible file descriptor leak for %lld opened at:\n");
 			}
 			if (h->backtrace)
 				free(h->backtrace);
