@@ -555,38 +555,32 @@ static void print_leak(struct hash_entry *h, const char *msg)
 		fprintf(stderr, "unknown\n");
 }
 
+static void hdl_leaks(struct hash_entry *h, const char *msg)
+{
+	while (h) {
+		if (!h->backtrace || !should_ignore_leak(h->backtrace))
+			print_leak(h, msg);
+
+		if (h->backtrace)
+			free(h->backtrace);
+		free(h);
+
+		h = h->next;
+	}
+}
+
 __attribute__((destructor))
 static void check_leaks(void)
 {
-	struct hash_entry *h;
 	int i;
 
 	force_libc = true;
 
 	for (i = 0; i < HASH_TABLE_SIZE; i++) {
-		h = allocation_table[i];
-		while (h) {
-			if (!h->backtrace ||
-			    !should_ignore_leak(h->backtrace)) {
-				print_leak(h, TAG "Possible memory leak for 0x%llx allocated at:\n");
-			}
-			if (h->backtrace)
-				free(h->backtrace);
-			free(h);
-			h = h->next;
-		}
-
-		h = fd_table[i];
-		while (h) {
-			if (!h->backtrace ||
-			    !should_ignore_leak(h->backtrace)) {
-				print_leak(h, TAG "Possible file descriptor leak for %lld opened at:\n");
-			}
-			if (h->backtrace)
-				free(h->backtrace);
-			free(h);
-			h = h->next;
-		}
+		hdl_leaks(allocation_table[i],
+			  TAG "Possible memory leak for 0x%llx allocated at:\n");
+		hdl_leaks(fd_table[i],
+			  TAG "Possible file descriptor leak for %lld opened at:\n");
 	}
 
 	if (found_bug)
