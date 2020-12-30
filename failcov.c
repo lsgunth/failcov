@@ -182,6 +182,7 @@ static FILE *load_database(void)
 static void write_callsite(FILE *dbf, struct hash_entry *h)
 {
 	size_t written;
+	int ret;
 
 	written = fwrite(&h->hash, sizeof(h->hash), 1, dbf);
 	if (written != 1) {
@@ -190,7 +191,11 @@ static void write_callsite(FILE *dbf, struct hash_entry *h)
 	}
 
 	/* flush in case the program crashes in the error handler */
-	fflush(dbf);
+	ret = fflush(dbf);
+	if (ret == EOF) {
+		perror(TAG "Unable to write database");
+		exit_error();
+	}
 }
 
 static struct hash_entry *get_current_callsite(void)
