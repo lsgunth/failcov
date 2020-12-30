@@ -19,6 +19,7 @@
 #include <sys/stat.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+#define TAG "\nFAILCOV: "
 
 static volatile bool use_early_allocator;
 static bool force_libc;
@@ -153,7 +154,7 @@ static FILE *load_database(void)
 
 	dbf = fopen(fname, "a+b");
 	if (!dbf) {
-		fprintf(stderr, "FAILCOV: Unable to open '%s': %m\n", fname);
+		fprintf(stderr, TAG "Unable to open '%s': %m\n", fname);
 		exit_error();
 	}
 
@@ -162,7 +163,7 @@ static FILE *load_database(void)
 	while (1) {
 		read = fread(&h->hash, sizeof(h->hash), 1, dbf);
 		if (ferror(dbf)) {
-			perror("FAILCOV: Unable to read database");
+			perror(TAG "Unable to read database");
 			exit_error();
 		}
 
@@ -184,7 +185,7 @@ static void write_callsite(FILE *dbf, struct hash_entry *h)
 
 	written = fwrite(&h->hash, sizeof(h->hash), 1, dbf);
 	if (written != 1) {
-		perror("FAILCOV: Unable to write database");
+		perror(TAG "Unable to write database");
 		exit_error();
 	}
 
@@ -243,7 +244,7 @@ static void print_backtrace(void)
 
 static void print_injection(void)
 {
-	fprintf(stderr, "\nFAILCOV: Injecting failure at:\n");
+	fprintf(stderr, TAG "Injecting failure at:\n");
 	print_backtrace();
 	fprintf(stderr, "\n");
 }
@@ -417,7 +418,7 @@ void *realloc(void *ptr, size_t size)
 	if (ret) {
 		track_create((intptr_t)ret, allocation_table);
 		track_destroy((intptr_t)ptr, allocation_table,
-			      "FAILCOV: Attempted to realloc untracked pointer 0x%llx at:\n");
+			      TAG "Attempted to realloc untracked pointer 0x%llx at:\n");
 	}
 
 	return ret;
@@ -428,7 +429,7 @@ void free(void *ptr)
 	call_super(free, void, ptr);
 	if (ptr)
 		track_destroy((intptr_t)ptr, allocation_table,
-			      "FAILCOV: Attempted to free untracked pointer 0x%llx at:\n");
+			      TAG "Attempted to free untracked pointer 0x%llx at:\n");
 }
 
 void *reallocarray(void *ptr, size_t nmemb, size_t size)
@@ -440,7 +441,7 @@ void *reallocarray(void *ptr, size_t nmemb, size_t size)
 	if (ret) {
 		track_create((intptr_t)ret, allocation_table);
 		track_destroy((intptr_t)ptr, allocation_table,
-			      "FAILCOV: Attempted to reallocarray untracked pointer 0x%llx at:\n");
+			      TAG "Attempted to reallocarray untracked pointer 0x%llx at:\n");
 	}
 
 	return ret;
@@ -499,7 +500,7 @@ int close(int fd)
 	ret = call_super(close, int, fd);
 	if (!ret)
 		track_destroy(fd, fd_table,
-			      "FAILCOV: Attempted to close untracked file descriptor %lld at:\n");
+			      TAG "Attempted to close untracked file descriptor %lld at:\n");
 
 	return ret;
 }
@@ -546,7 +547,7 @@ static bool should_ignore_leak(const char *backtrace)
 static void print_memory_leak(struct hash_entry *h)
 {
 	fprintf(stderr,
-		"\nFAILCOV: Possible memory leak for 0x%llx allocated at:\n",
+		TAG "Possible memory leak for 0x%llx allocated at:\n",
 	        h->hash);
 
 	if (h->backtrace)
@@ -558,7 +559,7 @@ static void print_memory_leak(struct hash_entry *h)
 static void print_fd_leak(struct hash_entry *h)
 {
 	fprintf(stderr,
-		"\nFAILCOV: Possible file descriptor leak for %lld opened at:\n",
+		TAG "Possible file descriptor leak for %lld opened at:\n",
 	        h->hash);
 
 	if (h->backtrace)
