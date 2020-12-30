@@ -308,7 +308,8 @@ static struct hash_entry *create_hash_entry_backtrace(void)
 	return h;
 }
 
-static void track_allocation(void *ptr)
+static void track_create(unsigned long long hash,
+			 struct hash_entry **table)
 {
 	struct hash_entry *h;
 
@@ -318,13 +319,14 @@ static void track_allocation(void *ptr)
 	force_libc = true;
 
 	h = create_hash_entry_backtrace();
-	h->hash = (intptr_t)ptr;
-	hash_table_insert(h, allocation_table);
+	h->hash = hash;
+	hash_table_insert(h, table);
 
 	force_libc = false;
 }
 
-static void track_free(void *ptr)
+static void track_destroy(unsigned long long hash, struct hash_entry **table,
+			  const char *msg)
 {
 	struct hash_entry *h;
 
@@ -333,51 +335,9 @@ static void track_free(void *ptr)
 
 	force_libc = true;
 
-	h = hash_table_pop((intptr_t)ptr, allocation_table);
+	h = hash_table_pop(hash, table);
 	if (!h) {
-		fprintf(stderr,
-			"FAILCOV: Attempted to free untracked pointer %p at\n",
-			ptr);
-		print_backtrace();
-	} else {
-		if (h->backtrace)
-			free(h->backtrace);
-		free(h);
-	}
-
-	force_libc = false;
-}
-
-static void track_open(int fd)
-{
-	struct hash_entry *h;
-
-	if (force_libc)
-		return;
-
-	force_libc = true;
-
-	h = create_hash_entry_backtrace();
-	h->hash = fd;
-	hash_table_insert(h, fd_table);
-
-	force_libc = false;
-}
-
-static void track_close(int fd)
-{
-	struct hash_entry *h;
-
-	if (force_libc)
-		return;
-
-	force_libc = true;
-
-	h = hash_table_pop(fd, fd_table);
-	if (!h) {
-		fprintf(stderr,
-			"FAILCOV: Attempted to close untracked file descriptor %d at\n",
-			fd);
+		fprintf(stderr, msg, hash);
 		print_backtrace();
 	} else {
 		if (h->backtrace)
@@ -428,7 +388,7 @@ void *malloc(size_t size)
 
 	ret = handle_call(malloc, void *, NULL, ENOMEM, size);
 	if (ret)
-		track_allocation(ret);
+		track_create((intptr_t)ret, allocation_table);
 
 	return ret;
 }
@@ -442,7 +402,7 @@ void *calloc(size_t nmemb, size_t size)
 
 	ret = handle_call(calloc, void *, NULL, ENOMEM, nmemb, size);
 	if (ret)
-		track_allocation(ret);
+		track_create((intptr_t)ret, allocation_table);
 
 	return ret;
 }
@@ -453,8 +413,9 @@ void *realloc(void *ptr, size_t size)
 
 	ret = handle_call(realloc, void *, NULL, ENOMEM, ptr, size);
 	if (ret) {
-		track_allocation(ret);
-		track_free(ptr);
+		track_create((intptr_t)ret, allocation_table);
+		track_destroy((intptr_t)ptr, allocation_table,
+			      "FAILCOV: Attempted to realloc untracked pointer 0x%llx at:\n");
 	}
 
 	return ret;
@@ -464,7 +425,8 @@ void free(void *ptr)
 {
 	call_super(free, void, ptr);
 	if (ptr)
-		track_free(ptr);
+		track_destroy((intptr_t)ptr, allocation_table,
+			      "FAILCOV: Attempted to free untracked pointer 0x%llx at:\n");
 }
 
 void *reallocarray(void *ptr, size_t nmemb, size_t size)
@@ -474,8 +436,9 @@ void *reallocarray(void *ptr, size_t nmemb, size_t size)
 	ret = handle_call(reallocarray, void *, NULL, ENOMEM, ptr, nmemb,
 			  size);
 	if (ret) {
-		track_allocation(ret);
-		track_free(ptr);
+		track_create((intptr_t)ret, allocation_table);
+		track_destroy((intptr_t)ptr, allocation_table,
+			      "FAILCOV: Attempted to reallocarray untracked pointer 0x%llx at:\n");
 	}
 
 	return ret;
@@ -487,7 +450,7 @@ int creat(const char *pathname, mode_t mode)
 
 	fd = handle_call(creat, int, -1, EACCES, pathname, mode);
 	if (fd != -1)
-		track_open(fd);
+		track_create(fd, fd_table);
 
 	return fd;
 }
@@ -504,7 +467,7 @@ int open(const char *pathname, int flags, ...)
 
 	fd = handle_call(open, int, -1, EACCES, pathname, flags, mode);
 	if (fd != -1)
-		track_open(fd);
+		track_create(fd, fd_table);
 
 	return fd;
 }
@@ -522,7 +485,7 @@ int openat(int dirfd, const char *pathname, int flags, ...)
 	fd = handle_call(openat, int, -1, EACCES, dirfd, pathname, flags,
 			 mode);
 	if (fd != -1)
-		track_open(fd);
+		track_create(fd, fd_table);
 
 	return fd;
 }
@@ -533,7 +496,8 @@ int close(int fd)
 
 	ret = call_super(close, int, fd);
 	if (!ret)
-		track_close(fd);
+		track_destroy(fd, fd_table,
+			      "FAILCOV: Attempted to close untracked file descriptor %lld at:\n");
 
 	return ret;
 }
