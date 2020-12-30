@@ -1,0 +1,51 @@
+// SPDX-License-Identifier: MIT
+/* Copyright (C) 2020, Logan Gunthorpe */
+
+#include <fcntl.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+int main()
+{
+	void *x, *y;
+	ssize_t rd;
+	int fd, ret = 0;
+
+	x = malloc(50);
+	if (!x) {
+		perror("x allocation failed");
+		printf("This will segfault: %d\n", *((unsigned char *)x));
+		return 1;
+	}
+
+	y = malloc(50);
+	if (!y) {
+		perror("y allocation failed");
+		return 1;
+	}
+
+	fd = open("/dev/zero", O_RDONLY);
+	if (fd == -1) {
+		perror("Unable to open /dev/zero");
+		ret = 1;
+		goto out;
+	}
+
+	rd = read(fd, x, 50);
+	if (rd < 0) {
+		perror("Failed to read /dev/zero");
+		ret = 1;
+		goto out;
+	}
+
+	close(fd);
+out:
+	free(y);
+	free(x);
+	if (!ret)
+		printf("OK\n");
+	return ret;
+}
