@@ -60,6 +60,7 @@ int main()
 	if (ret == EOF) {
 		ret = 1;
 		perror("Error while flushing to /dev/null");
+		goto close_out;
 	}
 
 	ret = fclose(f);
