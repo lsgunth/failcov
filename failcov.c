@@ -611,10 +611,15 @@ int fflush(FILE *stream)
 	return handle_call(fflush, int, EOF, ENOSPC, stream);
 }
 
-static bool should_ignore_leak(const char *backtrace)
+static bool should_ignore_leak(const char *backtrace,
+			       const char *ignore_all_env)
 {
+	char *ignore_all = getenv(ignore_all_env);
 	char *ignore = getenv("FAILCOV_LEAK_IGNORE");
 	char *ignore_cpy, *tok;
+
+	if (ignore_all)
+		return true;
 
 	if (strstr(backtrace, "_IO_file_doallocate"))
 		return true;
@@ -651,10 +656,12 @@ static void print_leak(struct hash_entry *h, const char *msg)
 		fprintf(stderr, "unknown\n");
 }
 
-static void hdl_leaks(struct hash_entry *h, const char *msg)
+static void hdl_leaks(struct hash_entry *h, const char *ignore_all_env,
+		      const char *msg)
 {
 	while (h) {
-		if (!h->backtrace || !should_ignore_leak(h->backtrace))
+		if (!h->backtrace ||
+		    !should_ignore_leak(h->backtrace, ignore_all_env))
 			print_leak(h, msg);
 
 		if (h->backtrace)
@@ -673,11 +680,11 @@ static void check_leaks(void)
 	force_libc = true;
 
 	for (i = 0; i < HASH_TABLE_SIZE; i++) {
-		hdl_leaks(allocation_table[i],
+		hdl_leaks(allocation_table[i], "FAILCOV_IGNORE_MEM_LEAKS",
 			  TAG "Possible memory leak for 0x%llx allocated at:\n");
-		hdl_leaks(fd_table[i],
+		hdl_leaks(fd_table[i], "FAILCOV_IGNORE_FD_LEAKS",
 			  TAG "Possible file descriptor leak for %lld opened at:\n");
-		hdl_leaks(file_table[i],
+		hdl_leaks(file_table[i], "FAILCOV_IGNORE_FILE_LEAKS",
 			  TAG "Possible unclosed file for 0x%llx opened at:\n");
 	}
 
