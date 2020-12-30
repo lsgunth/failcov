@@ -37,6 +37,7 @@ static pthread_mutex_t hash_table_mutex = PTHREAD_MUTEX_INITIALIZER;
 static struct hash_entry *callsite_table[HASH_TABLE_SIZE];
 static struct hash_entry *allocation_table[HASH_TABLE_SIZE];
 static struct hash_entry *fd_table[HASH_TABLE_SIZE];
+static struct hash_entry *file_table[HASH_TABLE_SIZE];
 
 /*
  * Simple hash function based on
@@ -515,6 +516,101 @@ ssize_t write(int fd, const void *buf, size_t count)
 	return handle_call(write, int, -1, ENOSPC, fd, buf, count);
 }
 
+FILE *fopen(const char *pathname, const char *mode)
+{
+	FILE *f;
+
+	f = handle_call(fopen, FILE *, NULL, EACCES, pathname, mode);
+	if (f)
+		track_create((intptr_t)f, file_table);
+
+	return f;
+}
+
+FILE *fdopen(int fd, const char *mode)
+{
+	FILE *f;
+
+	f = handle_call(fdopen, FILE *, NULL, EPERM, fd, mode);
+	if (f) {
+		track_create((intptr_t)f, file_table);
+		track_destroy(fd, fd_table,
+			      TAG "Attempted to fdopen untracked file descriptor %lld at:\n");
+	}
+
+	return f;
+}
+
+FILE *freopen(const char *pathname, const char *mode, FILE *stream)
+{
+	FILE *f;
+
+	f = handle_call(fdopen, FILE *, NULL, EPERM, pathname, mode, stream);
+	if (f) {
+		track_create((intptr_t)f, file_table);
+		track_destroy((intptr_t)stream, file_table,
+			      TAG "Attempted to freopen untracked file 0x%llx at:\n");
+	}
+
+	return f;
+}
+
+FILE *fmemopen(void *buf, size_t size, const char *mode)
+{
+	FILE *f;
+
+	f = handle_call(fmemopen, FILE *, NULL, ENOMEM, buf, size, mode);
+	if (f)
+		track_create((intptr_t)f, file_table);
+
+	return f;
+}
+
+int fclose(FILE *stream)
+{
+	track_destroy((intptr_t)stream, file_table,
+		      TAG "Attempted to fclose untracked file 0xllx at:\n");
+
+	return handle_call(fclose, int, EOF, ENOSPC, stream);
+}
+
+int fcloseall(void)
+{
+	struct hash_entry *h;
+	int i;
+
+	for (i = 0; i < HASH_TABLE_SIZE; i++) {
+		h = file_table[i];
+		while (h) {
+			if (h->backtrace)
+				free(h->backtrace);
+			free(h);
+
+			h = h->next;
+		}
+
+		file_table[i] = NULL;
+	}
+
+	return handle_call(fcloseall, int, EOF, ENOSPC);
+}
+
+size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+	return handle_call(fwrite, size_t, 0, ENOSPC, ptr, size, nmemb,
+			   stream);
+}
+
+/*
+ * fread(): simulating an error for fread is not possible seeing the error
+ * indicator cannot be set (see ferror()).
+ */
+
+int fflush(FILE *stream)
+{
+	return handle_call(fflush, int, EOF, ENOSPC, stream);
+}
+
 static bool should_ignore_leak(const char *backtrace)
 {
 	char *ignore = getenv("FAILCOV_LEAK_IGNORE");
@@ -581,6 +677,8 @@ static void check_leaks(void)
 			  TAG "Possible memory leak for 0x%llx allocated at:\n");
 		hdl_leaks(fd_table[i],
 			  TAG "Possible file descriptor leak for %lld opened at:\n");
+		hdl_leaks(file_table[i],
+			  TAG "Possible unclosed file for 0x%llx opened at:\n");
 	}
 
 	if (found_bug)

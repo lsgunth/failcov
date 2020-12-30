@@ -10,8 +10,9 @@
 
 int main()
 {
+	FILE *f;
 	void *x, *y;
-	ssize_t rd;
+	ssize_t rd, wr;
 	int fd, ret = 0;
 
 	x = malloc(50);
@@ -41,6 +42,33 @@ int main()
 		goto out;
 	}
 
+	f = fopen("/dev/null", "w");
+	if (!f) {
+		ret = 1;
+		perror("Unable to open /dev/null");
+		goto close_out;
+	}
+
+	wr = fwrite(x, 1, rd, f);
+	if (wr != rd) {
+		ret = 1;
+		perror("Unable to write to /dev/null");
+		goto close_out;
+	}
+
+	ret = fflush(f);
+	if (ret == EOF) {
+		ret = 1;
+		perror("Error while flushing to /dev/null");
+	}
+
+	ret = fclose(f);
+	if (ret == EOF) {
+		ret = 1;
+		perror("Error while to closing /dev/null");
+	}
+
+close_out:
 	close(fd);
 out:
 	free(y);
