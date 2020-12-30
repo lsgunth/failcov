@@ -495,14 +495,9 @@ int openat(int dirfd, const char *pathname, int flags, ...)
 
 int close(int fd)
 {
-	int ret;
-
-	ret = call_super(close, int, fd);
-	if (!ret)
-		track_destroy(fd, fd_table,
-			      TAG "Attempted to close untracked file descriptor %lld at:\n");
-
-	return ret;
+	track_destroy(fd, fd_table,
+		      TAG "Attempted to close untracked file descriptor %lld at:\n");
+	return handle_call(close, int, -1, EDQUOT, fd);
 }
 
 ssize_t read(int fd, void *buf, size_t count)
