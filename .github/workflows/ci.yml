@@ -1,0 +1,19 @@
+name: CI
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: apt update
+        run: sudo apt-get update
+      - name: Install libunwind-dev
+        run: sudo apt-get install libunwind-dev
+      - uses: actions/checkout@v2
+      - name: make
+        run: make
+      - name: test
+        run: ./test.py -v
