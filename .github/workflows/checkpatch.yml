@@ -1,0 +1,15 @@
+name: checkpatch review
+on: [pull_request]
+jobs:
+  checkpatch_review:
+      name: checkpatch review
+      runs-on: ubuntu-latest
+      steps:
+      - uses: actions/checkout@v1
+      - name: Run checkpatch review
+        uses: webispy/checkpatch-action@master
+        env:
+          CHECKPATCH_COMMAND: >-
+            checkpatch.pl --no-tree
+              --ignore PREFER_KERNEL_TYPES,UNSPECIFIED_INT,MULTIPLE_ASSIGNMENTS
+              --ignore FILE_PATH_CHANGES,BIT_MACRO,CONST_STRUCT
