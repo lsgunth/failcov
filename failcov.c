@@ -288,10 +288,9 @@ out:
 	return ret;
 }
 
-static struct hash_entry *create_hash_entry_backtrace(void)
+static char *get_backtrace_string(void)
 {
 	char name[4096], backtrace[4096];
-	struct hash_entry *h;
 	unw_cursor_t cursor;
 	unw_context_t uc;
 	unw_word_t off;
@@ -310,10 +309,7 @@ static struct hash_entry *create_hash_entry_backtrace(void)
 				 "    %s+0x%lx\n", name, off);
 	}
 
-	h = create_hash_entry();
-	h->backtrace = strdup(backtrace);
-
-	return h;
+	return strdup(backtrace);
 }
 
 static void track_create(unsigned long long hash,
@@ -326,7 +322,8 @@ static void track_create(unsigned long long hash,
 
 	force_libc = true;
 
-	h = create_hash_entry_backtrace();
+	h = create_hash_entry();
+	h->backtrace = get_backtrace_string();
 	h->hash = hash;
 	hash_table_insert(h, table);
 
