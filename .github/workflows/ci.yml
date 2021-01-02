@@ -10,10 +10,17 @@ jobs:
     steps:
       - name: apt update
         run: sudo apt-get update
-      - name: Install libunwind-dev
-        run: sudo apt-get install libunwind-dev
+      - name: Install dependencies
+        run: sudo apt-get install libunwind-dev lcov
       - uses: actions/checkout@v2
       - name: make
-        run: make
+        run: make COVERAGE=1
       - name: test
         run: ./test.py -v
+      - name: coverage
+        run: make coverage.info
+      - name: coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path-to-lcov: coverage.info
