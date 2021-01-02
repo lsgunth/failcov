@@ -51,17 +51,17 @@ class FailCovTestCase(unittest.TestCase):
     def expected_codes(self, env):
         for ec, title in self._expected_codes:
             if ec == TestCode.MEM_LEAK:
-                if "FAILCOV_IGNORE_MEM_LEAKS" in env:
+                if "FAILCOV_IGNORE_ALL_MEM_LEAKS" in env:
                     yield TestCode.EXPECTED_ERROR, title
                 else:
                     yield TestCode.FAILCOV_BUG_FOUND, title
             elif ec == TestCode.FD_LEAK:
-                if "FAILCOV_IGNORE_FD_LEAKS" in env:
+                if "FAILCOV_IGNORE_ALL_FD_LEAKS" in env:
                     yield TestCode.EXPECTED_ERROR, title
                 else:
                     yield TestCode.FAILCOV_BUG_FOUND, title
             elif ec == TestCode.FILE_LEAK:
-                if "FAILCOV_IGNORE_FILE_LEAKS" in env:
+                if "FAILCOV_IGNORE_ALL_FILE_LEAKS" in env:
                     yield TestCode.EXPECTED_ERROR, title
                 else:
                     yield TestCode.FAILCOV_BUG_FOUND, title
@@ -82,14 +82,14 @@ class FailCovTestCase(unittest.TestCase):
         self.run_tests()
 
     def test_ignore_mem_leaks(self):
-        self.run_tests(env={"FAILCOV_IGNORE_MEM_LEAKS": "y"})
+        self.run_tests(env={"FAILCOV_ALL_IGNORE_MEM_LEAKS": "y"})
 
     def test_ignore_fd_leaks(self):
-        self.run_tests(env={"FAILCOV_IGNORE_FD_LEAKS": "y"})
+        self.run_tests(env={"FAILCOV_ALL_IGNORE_FD_LEAKS": "y"})
 
     def test_ignore_file_leaks(self):
-        self.run_tests(env={"FAILCOV_IGNORE_FILE_LEAKS": "y",
-                            "FAILCOV_LEAK_IGNORE": "fopen"})
+        self.run_tests(env={"FAILCOV_ALL_IGNORE_FILE_LEAKS": "y",
+                            "FAILCOV_IGNORE_MEM_LEAKS": "fopen"})
 
 if __name__ == '__main__':
         unittest.main(buffer=True, catchbreak=True)
