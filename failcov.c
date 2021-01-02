@@ -117,8 +117,17 @@ static void __exit_error(const char *env, int err)
 			err = tmp;
 	}
 
+#ifdef GCOV
+	extern void __gcov_dump(void);
+	__gcov_dump();
+	/*
+	 * The following lines will be hit by coverage but the data will not be
+	 * saved (LCOV_EXCL_START)
+	 */
+#endif
 	exit(err);
 }
+/* LCOV_EXCL_STOP */
 
 static void exit_error(void)
 {
