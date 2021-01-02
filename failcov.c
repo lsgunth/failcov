@@ -219,6 +219,12 @@ static struct hash_entry *get_current_callsite(void)
 			snprintf(name + strlen(name),
 				 sizeof(name) - strlen(name),
 				 "+0x%lx", off);
+
+		if (strstr(name, "gcov_do_dump")) {
+			free(h);
+			return NULL;
+		}
+
 		h->hash = djb_hash(name, h->hash);
 	}
 
