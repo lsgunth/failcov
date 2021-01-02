@@ -8,12 +8,64 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+static int test_fd(void *x)
+{
+	ssize_t rd;
+	int fd;
+
+	fd = open("/dev/zero", O_RDONLY);
+	if (fd == -1) {
+		perror("Unable to open /dev/zero");
+		return 1;
+	}
+
+	rd = read(fd, x, 50);
+	if (rd < 0) {
+		perror("Failed to read /dev/zero");
+		return 1;
+	}
+
+	close(fd);
+	return 0;
+}
+
+static int test_stdio(void *x)
+{
+	ssize_t wr;
+	FILE *f;
+	int ret;
+
+	f = fopen("/dev/null", "w");
+	if (!f) {
+		perror("Unable to open /dev/null");
+		return 1;
+	}
+
+	wr = fwrite(x, 1, 50, f);
+	if (wr != 50) {
+		perror("Unable to write to /dev/null");
+		return 1;
+	}
+
+	ret = fflush(f);
+	if (ret == EOF) {
+		perror("Error while flushing to /dev/null");
+		return 1;
+	}
+
+	ret = fclose(f);
+	if (ret == EOF) {
+		ret = 1;
+		perror("Error while to closing /dev/null");
+	}
+
+	return ret;
+}
+
 int main()
 {
-	FILE *f;
 	void *x, *y;
-	ssize_t rd, wr;
-	int fd, ret = 0;
+	int ret;
 
 	x = malloc(50);
 	if (!x) {
@@ -33,49 +85,14 @@ int main()
 		return 1;
 	}
 
-	fd = open("/dev/zero", O_RDONLY);
-	if (fd == -1) {
-		perror("Unable to open /dev/zero");
-		ret = 1;
+	ret = test_fd(x);
+	if (ret)
 		goto out;
-	}
 
-	rd = read(fd, x, 50);
-	if (rd < 0) {
-		perror("Failed to read /dev/zero");
-		ret = 1;
+	ret = test_stdio(x);
+	if (ret)
 		goto out;
-	}
 
-	f = fopen("/dev/null", "w");
-	if (!f) {
-		ret = 1;
-		perror("Unable to open /dev/null");
-		goto close_out;
-	}
-
-	wr = fwrite(x, 1, rd, f);
-	if (wr != rd) {
-		ret = 1;
-		perror("Unable to write to /dev/null");
-		goto close_out;
-	}
-
-	ret = fflush(f);
-	if (ret == EOF) {
-		ret = 1;
-		perror("Error while flushing to /dev/null");
-		goto close_out;
-	}
-
-	ret = fclose(f);
-	if (ret == EOF) {
-		ret = 1;
-		perror("Error while to closing /dev/null");
-	}
-
-close_out:
-	close(fd);
 out:
 	free(y);
 	free(x);
