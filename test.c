@@ -17,9 +17,14 @@ int main()
 
 	x = malloc(50);
 	if (!x) {
+		/*
+		 * Due to the intentional segfault, these lines will not appear
+		 * to be covered (LCOV_EXCL_START)
+		 */
 		perror("x allocation failed");
 		printf("This will segfault: %d\n", *((unsigned char *)x));
 		return 1;
+		/* LCOV_EXCL_STOP */
 	}
 
 	y = malloc(50);
