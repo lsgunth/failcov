@@ -288,6 +288,40 @@ out:
 	return ret;
 }
 
+static bool should_ignore_err(const char *backtrace, const char *ignore_env,
+			      const char *ignore_all_env)
+{
+	char *ignore_all = getenv(ignore_all_env);
+	char *ignore = getenv(ignore_env);
+	char *ignore_cpy, *tok;
+
+	if (ignore_all)
+		return true;
+
+	if (strstr(backtrace, "_IO_file_doallocate"))
+		return true;
+
+	if (!ignore)
+		return false;
+
+	ignore_cpy = strdup(ignore);
+	if (!ignore_cpy)
+		return false;
+
+	tok = strtok(ignore, " ");
+	while (tok) {
+		if (strstr(backtrace, tok)) {
+			free(ignore_cpy);
+			return true;
+		}
+
+		tok = strtok(NULL, " ");
+	}
+
+	free(ignore_cpy);
+	return false;
+}
+
 static char *get_backtrace_string(void)
 {
 	char name[4096], backtrace[4096];
@@ -617,40 +651,6 @@ int fflush(FILE *stream)
 	return handle_call(fflush, int, EOF, ENOSPC, stream);
 }
 
-static bool should_ignore_leak(const char *backtrace, const char *ignore_env,
-			       const char *ignore_all_env)
-{
-	char *ignore_all = getenv(ignore_all_env);
-	char *ignore = getenv(ignore_env);
-	char *ignore_cpy, *tok;
-
-	if (ignore_all)
-		return true;
-
-	if (strstr(backtrace, "_IO_file_doallocate"))
-		return true;
-
-	if (!ignore)
-		return false;
-
-	ignore_cpy = strdup(ignore);
-	if (!ignore_cpy)
-		return false;
-
-	tok = strtok(ignore, " ");
-	while (tok) {
-		if (strstr(backtrace, tok)) {
-			free(ignore_cpy);
-			return true;
-		}
-
-		tok = strtok(NULL, " ");
-	}
-
-	free(ignore_cpy);
-	return false;
-}
-
 static void print_leak(struct hash_entry *h, const char *msg)
 {
 	found_bug = true;
@@ -667,8 +667,8 @@ static void hdl_leaks(struct hash_entry *h, const char *ignore_env,
 {
 	while (h) {
 		if (!h->backtrace ||
-		    !should_ignore_leak(h->backtrace, ignore_env,
-					ignore_all_env))
+		    !should_ignore_err(h->backtrace, ignore_env,
+				       ignore_all_env))
 			print_leak(h, msg);
 
 		if (h->backtrace)
