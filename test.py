@@ -88,8 +88,7 @@ class FailCovTestCase(unittest.TestCase):
         self.run_tests(env={"FAILCOV_ALL_IGNORE_FD_LEAKS": "y"})
 
     def test_ignore_file_leaks(self):
-        self.run_tests(env={"FAILCOV_ALL_IGNORE_FILE_LEAKS": "y",
-                            "FAILCOV_IGNORE_MEM_LEAKS": "fopen"})
+        self.run_tests(env={"FAILCOV_ALL_IGNORE_FILE_LEAKS": "y"})
 
 if __name__ == '__main__':
         unittest.main(buffer=True, catchbreak=True)
