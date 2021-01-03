@@ -365,9 +365,11 @@ static void track_create(unsigned long long hash,
 }
 
 static void track_destroy(unsigned long long hash, struct hash_entry **table,
+			  const char *ignore_env, const char *ignore_all_env,
 			  const char *msg)
 {
 	struct hash_entry *h;
+	char *backtrace;
 
 	if (force_libc)
 		return;
@@ -376,9 +378,14 @@ static void track_destroy(unsigned long long hash, struct hash_entry **table,
 
 	h = hash_table_pop(hash, table);
 	if (!h) {
-		fprintf(stderr, msg, hash);
-		print_backtrace();
-		found_bug = true;
+		backtrace = get_backtrace_string();
+		if (!should_ignore_err(backtrace, ignore_env,
+				       ignore_all_env)) {
+			fprintf(stderr, msg, hash);
+			print_backtrace();
+			found_bug = true;
+		}
+		free(backtrace);
 	} else {
 		if (h->backtrace)
 			free(h->backtrace);
@@ -465,6 +472,8 @@ void *realloc(void *ptr, size_t size)
 	if (ret) {
 		track_create((intptr_t)ret, allocation_table);
 		track_destroy((intptr_t)ptr, allocation_table,
+			      "FAILCOV_IGNORE_UNTRACKED_FREES",
+			      "FAILCOV_IGNORE_ALL_UNTRACKED_FREES",
 			      TAG "Attempted to realloc untracked pointer 0x%llx at:\n");
 	}
 
@@ -476,6 +485,8 @@ void free(void *ptr)
 	call_super(free, void, ptr);
 	if (ptr)
 		track_destroy((intptr_t)ptr, allocation_table,
+			      "FAILCOV_IGNORE_UNTRACKED_FREES",
+			      "FAILCOV_IGNORE_ALL_UNTRACKED_FREES",
 			      TAG "Attempted to free untracked pointer 0x%llx at:\n");
 }
 
@@ -488,6 +499,8 @@ void *reallocarray(void *ptr, size_t nmemb, size_t size)
 	if (ret) {
 		track_create((intptr_t)ret, allocation_table);
 		track_destroy((intptr_t)ptr, allocation_table,
+			      "FAILCOV_IGNORE_UNTRACKED_FREES",
+			      "FAILCOV_IGNORE_ALL_UNTRACKED_FREES",
 			      TAG "Attempted to reallocarray untracked pointer 0x%llx at:\n");
 	}
 
@@ -543,6 +556,8 @@ int openat(int dirfd, const char *pathname, int flags, ...)
 int close(int fd)
 {
 	track_destroy(fd, fd_table,
+		      "FAILCOV_IGNORE_UNTRACKED_CLOSES",
+		      "FAILCOV_IGNORE_ALL_UNTRACKED_CLOSES",
 		      TAG "Attempted to close untracked file descriptor %lld at:\n");
 	return handle_call_close(close, int, -1, EDQUOT, fd);
 }
@@ -576,6 +591,8 @@ FILE *fdopen(int fd, const char *mode)
 	if (f) {
 		track_create((intptr_t)f, file_table);
 		track_destroy(fd, fd_table,
+			      "FAILCOV_IGNORE_UNTRACKED_FCLOSES",
+			      "FAILCOV_IGNORE_ALL_UNTRACKED_FCLOSES",
 			      TAG "Attempted to fdopen untracked file descriptor %lld at:\n");
 	}
 
@@ -590,6 +607,8 @@ FILE *freopen(const char *pathname, const char *mode, FILE *stream)
 	if (f) {
 		track_create((intptr_t)f, file_table);
 		track_destroy((intptr_t)stream, file_table,
+			      "FAILCOV_IGNORE_UNTRACKED_FCLOSES",
+			      "FAILCOV_IGNORE_ALL_UNTRACKED_FCLOSES",
 			      TAG "Attempted to freopen untracked file 0x%llx at:\n");
 	}
 
@@ -610,6 +629,8 @@ FILE *fmemopen(void *buf, size_t size, const char *mode)
 int fclose(FILE *stream)
 {
 	track_destroy((intptr_t)stream, file_table,
+		      "FAILCOV_IGNORE_UNTRACKED_FCLOSES",
+		      "FAILCOV_IGNORE_ALL_UNTRACKED_FCLOSES",
 		      TAG "Attempted to fclose untracked file 0xllx at:\n");
 	return handle_call_close(fclose, int, EOF, ENOSPC, stream);
 }
