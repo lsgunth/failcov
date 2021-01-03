@@ -36,6 +36,11 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.FILE_LEAK,           "Error while flushing to /dev/null"),
         (TestCode.EXPECTED_ERROR,      "Error while to closing /dev/null"),
         (TestCode.SUCCESS,             "printf/malloc injected failure"),
+        (TestCode.EXPECTED_ERROR,      "Unable to open /dev/urandom"),
+        (TestCode.EXPECTED_ERROR,      "Unable to open /dev/urandom (mem)"),
+        (TestCode.FILE_LEAK,           "Unable to open /dev/random"),
+        (TestCode.FILE_LEAK,           "Unable to open /dev/random (mem)"),
+        (TestCode.EXPECTED_ERROR,      "Error while closing all files"),
         (TestCode.SUCCESS,             "no failures"),
     ]
 

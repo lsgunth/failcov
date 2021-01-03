@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 /* Copyright (C) 2020, Logan Gunthorpe */
 
+#define _GNU_SOURCE
+
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -62,6 +64,35 @@ static int test_stdio(void *x)
 	return ret;
 }
 
+static int test_fcloseall(void)
+{
+	FILE *a, *b;
+	int ret;
+
+	a = fopen("/dev/urandom", "rb");
+	if (!a) {
+		perror("Unable to open /dev/urandom");
+		return 1;
+	}
+
+	b = fopen("/dev/random", "rb");
+	if (!b) {
+		perror("Unable to open /dev/random");
+		return 1;
+	}
+
+	(void)a;
+	(void)b;
+
+	ret = fcloseall();
+	if (ret) {
+		perror("Error while closing all files");
+		return 1;
+	}
+
+	return 0;
+}
+
 int main()
 {
 	void *x, *y;
@@ -96,7 +127,9 @@ int main()
 out:
 	free(y);
 	free(x);
-	if (!ret)
+	if (!ret) {
 		printf("OK\n");
+		ret = test_fcloseall();
+	}
 	return ret;
 }
