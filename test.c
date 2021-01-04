@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -203,6 +204,38 @@ out:
 	return ret;
 }
 
+static int test_realloc(void)
+{
+	size_t sz = 1024;
+	void *x, *y;
+
+	x = calloc(sz, 1);
+	if (!x) {
+		perror("Unable to calloc memory");
+		return 1;
+	}
+	memset(x, 0xAA, sz);
+
+	y = realloc(x, 2048);
+	if (!y) {
+		perror("Unable to realloc memory");
+		free(x);
+		return 1;
+	}
+	x = y;
+
+	y = reallocarray(x, sz, 4);
+	if (!y) {
+		perror("Unable to reallocarray memory");
+		free(x);
+		return 1;
+	}
+	x = y;
+
+	free(x);
+	return 0;
+}
+
 int main()
 {
 	void *x, *y;
@@ -247,6 +280,10 @@ int main()
 		goto out;
 
 	ret = test_creat_fdopen();
+	if (ret)
+		goto out;
+
+	ret = test_realloc();
 	if (ret)
 		goto out;
 
