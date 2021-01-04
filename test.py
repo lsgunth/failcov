@@ -28,6 +28,7 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.MEM_LEAK,            "y allocation failed"),
         (TestCode.EXPECTED_ERROR,      "Unable to open /dev/zero"),
         (TestCode.FD_LEAK,             "Failed to read /dev/zero"),
+        (TestCode.FD_LEAK,             "Failed to write /dev/zero"),
         (TestCode.SUCCESS,             "close injected failure"),
         (TestCode.EXPECTED_ERROR,      "Unable to open /dev/urandom"),
         (TestCode.FD_LEAK,             "Failed to read /dev/urandom"),

@@ -15,7 +15,7 @@ static int test_fd(void *x)
 	ssize_t rd;
 	int fd;
 
-	fd = open("/dev/zero", O_RDONLY);
+	fd = open("/dev/zero", O_RDWR);
 	if (fd == -1) {
 		perror("Unable to open /dev/zero");
 		return 1;
@@ -24,6 +24,12 @@ static int test_fd(void *x)
 	rd = read(fd, x, 50);
 	if (rd < 0) {
 		perror("Failed to read /dev/zero");
+		return 1;
+	}
+
+	rd = write(fd, x, 50);
+	if (rd < 0) {
+		perror("Failed to write /dev/zero");
 		return 1;
 	}
 
