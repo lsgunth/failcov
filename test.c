@@ -162,6 +162,41 @@ static int test_tmpfile(void)
 	return 0;
 }
 
+static int test_creat_fdopen(void)
+{
+	int fd, ret = 0;
+	char tmpn[128];
+	FILE *f;
+
+	snprintf(tmpn, sizeof(tmpn), "/tmp/failcov%d", rand());
+
+	fd = creat(tmpn, 0600);
+	if (fd == -1) {
+		ret = 1;
+		perror("Unable to creat temporary file");
+		goto out;
+	}
+
+	f = fdopen(fd, "wb");
+	if (!f) {
+		ret = 1;
+		close(fd);
+		perror("Unable to fdopen temporary file");
+		goto out;
+	}
+
+	ret = fclose(f);
+	if (ret == EOF) {
+		ret = 1;
+		perror("Failure closing temporary FILE");
+		goto out;
+	}
+
+out:
+	unlink(tmpn);
+	return ret;
+}
+
 int main()
 {
 	void *x, *y;
@@ -202,6 +237,10 @@ int main()
 		goto out;
 
 	ret = test_tmpfile();
+	if (ret)
+		goto out;
+
+	ret = test_creat_fdopen();
 	if (ret)
 		goto out;
 
