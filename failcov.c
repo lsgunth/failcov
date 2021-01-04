@@ -485,11 +485,11 @@ void *realloc(void *ptr, size_t size)
 
 	ret = handle_call(realloc, void *, NULL, ENOMEM, ptr, size);
 	if (ret) {
-		track_create((intptr_t)ret, allocation_table);
 		track_destroy((intptr_t)ptr, allocation_table,
 			      "FAILCOV_IGNORE_UNTRACKED_FREES",
 			      "FAILCOV_IGNORE_ALL_UNTRACKED_FREES",
 			      TAG "Attempted to realloc untracked pointer 0x%llx at:\n");
+		track_create((intptr_t)ret, allocation_table);
 	}
 
 	return ret;
