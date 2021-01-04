@@ -183,6 +183,13 @@ static FILE *load_database(void)
 		ret = hash_table_insert(h, callsite_table);
 		if (ret)
 			h = create_hash_entry();
+
+		/*
+		 * break if we see multiple zero hashes, this is for testing
+		 * with /dev/full which outputs a stream of zeros
+		 */
+		if (!ret && h->hash == 0)
+			break;
 	}
 
 	free(h);

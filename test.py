@@ -63,14 +63,20 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.SUCCESS,             "no failures"),
     ]
 
-    def run_test(self, db, env={}):
+    def _run_test(self, db, env=None):
+        if env is None:
+            env = {}
         env["LD_PRELOAD"] = str(ROOT / "failcov.so")
-        env["FAILCOV_DATABASE"] = str(db)
+        if db is not None:
+            env["FAILCOV_DATABASE"] = str(db)
         return subprocess.run(["./test"], cwd=ROOT, env=env,
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                            text=True)
+
+    def run_test(self, *args, **kws):
+        p = self._run_test(*args, **kws)
         print(p.stdout)
-        return p.returncode
+        return p
 
     def expected_codes(self, env):
         for ec, title in self._expected_codes:
@@ -101,7 +107,7 @@ class FailCovTestCase(unittest.TestCase):
         with tempfile.NamedTemporaryFile() as db:
             for i, (ec, t) in enumerate(self.expected_codes(env)):
                 with self.subTest(t):
-                    p = self.run_test(db.name, env=env)
+                    p = self._run_test(db.name, env=env)
                     if ec != p.returncode:
                         print(f" ----- {i}: {t} -----")
                         print(p.stdout)
@@ -121,6 +127,25 @@ class FailCovTestCase(unittest.TestCase):
 
     def test_ignore_untracked_closes(self):
         self.run_tests(env={"FAILCOV_IGNORE_ALL_UNTRACKED_CLOSES": "y"})
+
+    def test_invalid_db(self):
+        p = self.run_test("/not/a/valid/path/123/database")
+        self.assertEqual(TestCode.FAILCOV_ERROR, p.returncode)
+
+    def test_custom_exit_err(self):
+        err = 52
+        p = self.run_test("/not/a/valid/path/123/database",
+                          env={"FAILCOV_EXIT_ERROR": str(err)})
+        self.assertEqual(52, p.returncode)
+
+    def test_fulldb(self):
+        p = self.run_test("/dev/full")
+        self.assertEqual(TestCode.FAILCOV_ERROR, p.returncode)
+
+    def test_nodb(self):
+        self.run_test(None)
+        self.run_test(None)
+        os.unlink("failcov.db")
 
 if __name__ == '__main__':
         unittest.main(buffer=True, catchbreak=True)
