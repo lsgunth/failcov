@@ -114,6 +114,26 @@ static int test_fmemopen(void)
 	return 0;
 }
 
+static int test_tmpfile(void)
+{
+	FILE *f;
+	int ret;
+
+	f = tmpfile();
+	if (!f) {
+		perror("Unable to open temporary FILE");
+		return 1;
+	}
+
+	ret = fclose(f);
+	if (ret == EOF) {
+		perror("Failure closing temporary FILE");
+		return 1;
+	}
+
+	return 0;
+}
+
 int main()
 {
 	void *x, *y;
@@ -146,6 +166,10 @@ int main()
 		goto out;
 
 	ret = test_fmemopen();
+	if (ret)
+		goto out;
+
+	ret = test_tmpfile();
 	if (ret)
 		goto out;
 
