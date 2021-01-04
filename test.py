@@ -24,19 +24,19 @@ class TestCode(enum.IntEnum):
 
 class FailCovTestCase(unittest.TestCase):
     _expected_codes = [
-        TestCode.SEGFAULT,            #x allocation failed
-        TestCode.MEM_LEAK,            #y allocation failed
-        TestCode.EXPECTED_ERROR,      #Unable to open /dev/zero
-        TestCode.FD_LEAK,             #Failed to read /dev/zero
-        TestCode.EXPECTED_ERROR,      #Unable to open /dev/null
-        TestCode.EXPECTED_ERROR,      #Unable to open /dev/null
-        TestCode.FILE_LEAK,           #Unable to write to /dev/null
-        TestCode.SUCCESS,             #fwrite/malloc injected failure
-        TestCode.FILE_LEAK,           #Error while flushing to /dev/null
-        TestCode.EXPECTED_ERROR,      #Error while to closing /dev/null
-        TestCode.SUCCESS,             #close injected failure
-        TestCode.SUCCESS,             #printf/malloc injected failure
-        TestCode.SUCCESS,             #no failures
+        (TestCode.SEGFAULT,            "x allocation failed"),
+        (TestCode.MEM_LEAK,            "y allocation failed"),
+        (TestCode.EXPECTED_ERROR,      "Unable to open /dev/zero"),
+        (TestCode.FD_LEAK,             "Failed to read /dev/zero"),
+        (TestCode.EXPECTED_ERROR,      "Unable to open /dev/null"),
+        (TestCode.EXPECTED_ERROR,      "Unable to open /dev/null"),
+        (TestCode.FILE_LEAK,           "Unable to write to /dev/null"),
+        (TestCode.SUCCESS,             "fwrite/malloc injected failure"),
+        (TestCode.FILE_LEAK,           "Error while flushing to /dev/null"),
+        (TestCode.EXPECTED_ERROR,      "Error while to closing /dev/null"),
+        (TestCode.SUCCESS,             "close injected failure"),
+        (TestCode.SUCCESS,             "printf/malloc injected failure"),
+        (TestCode.SUCCESS,             "no failures"),
     ]
 
     def run_test(self, db, env={}):
@@ -49,32 +49,32 @@ class FailCovTestCase(unittest.TestCase):
         return p.returncode
 
     def expected_codes(self, env):
-        for ec in self._expected_codes:
+        for ec, title in self._expected_codes:
             if ec == TestCode.MEM_LEAK:
                 if "FAILCOV_IGNORE_MEM_LEAKS" in env:
-                    yield TestCode.EXPECTED_ERROR
+                    yield TestCode.EXPECTED_ERROR, title
                 else:
-                    yield TestCode.FAILCOV_BUG_FOUND
+                    yield TestCode.FAILCOV_BUG_FOUND, title
             elif ec == TestCode.FD_LEAK:
                 if "FAILCOV_IGNORE_FD_LEAKS" in env:
-                    yield TestCode.EXPECTED_ERROR
+                    yield TestCode.EXPECTED_ERROR, title
                 else:
-                    yield TestCode.FAILCOV_BUG_FOUND
+                    yield TestCode.FAILCOV_BUG_FOUND, title
             elif ec == TestCode.FILE_LEAK:
                 if "FAILCOV_IGNORE_FILE_LEAKS" in env:
-                    yield TestCode.EXPECTED_ERROR
+                    yield TestCode.EXPECTED_ERROR, title
                 else:
-                    yield TestCode.FAILCOV_BUG_FOUND
+                    yield TestCode.FAILCOV_BUG_FOUND, title
             else:
-                yield ec
+                yield ec, title
 
     def run_tests(self, env={}):
         with tempfile.NamedTemporaryFile() as db:
-            for i, ec in enumerate(self.expected_codes(env)):
-                with self.subTest(i=i):
+            for i, (ec, t) in enumerate(self.expected_codes(env)):
+                with self.subTest(t):
                     p = self.run_test(db.name, env=env)
                     if ec != p.returncode:
-                        print(f" ----- {i} -----")
+                        print(f" ----- {i}: {t} -----")
                         print(p.stdout)
                     self.assertEqual(ec, p.returncode)
 
