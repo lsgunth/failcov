@@ -641,6 +641,17 @@ FILE *fmemopen(void *buf, size_t size, const char *mode)
 	return f;
 }
 
+FILE *tmpfile(void)
+{
+	FILE *f;
+
+	f = handle_call(tmpfile, FILE *, NULL, EROFS);
+	if (f)
+		track_create((intptr_t)f, file_table);
+
+	return f;
+}
+
 int fclose(FILE *stream)
 {
 	track_destroy((intptr_t)stream, file_table,
