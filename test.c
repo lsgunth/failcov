@@ -239,6 +239,28 @@ static int test_realloc(void)
 	return 0;
 }
 
+__attribute__ ((noinline))
+static int test_ignore_leak(void)
+{
+	void *x, *y;
+
+	x = malloc(32);
+	if (!x) {
+		perror("Unable to allocate leaked memory");
+		return 1;
+	}
+
+	y = malloc(32);
+	if (!y) {
+		perror("Unable to allocate ignored leak memory");
+		return 1;
+	}
+
+	free(y);
+	free(x);
+	return 0;
+}
+
 /* Insert a large number of objects to ensure the hash table works */
 static int test_hash_table(void)
 {
@@ -309,6 +331,10 @@ int main(void)
 		goto out;
 
 	ret = test_realloc();
+	if (ret)
+		goto out;
+
+	ret = test_ignore_leak();
 	if (ret)
 		goto out;
 
