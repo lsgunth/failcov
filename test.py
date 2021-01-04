@@ -69,13 +69,15 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.SUCCESS,             "no failures"),
     ]
 
-    def _run_test(self, db, env=None):
+    def _run_test(self, db, env=None, payload=None, args=[]):
+        if payload is None:
+            payload = "./test"
         if env is None:
             env = {}
         env["LD_PRELOAD"] = str(ROOT / "failcov.so")
         if db is not None:
             env["FAILCOV_DATABASE"] = str(db)
-        return subprocess.run(["./test"], cwd=ROOT, env=env,
+        return subprocess.run([payload] + args, cwd=ROOT, env=env,
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                            text=True)
 
@@ -168,6 +170,29 @@ class FailCovTestCase(unittest.TestCase):
         self.run_test(None)
         self.run_test(None)
         os.unlink("failcov.db")
+
+    def check_no_segfault(self, db, iterations=20, payload=None):
+        exp = (TestCode.SUCCESS,
+               TestCode.EXPECTED_ERROR,
+               TestCode.FAILCOV_BUG_FOUND)
+
+        for i in range(iterations):
+            with self.subTest(i=i):
+                p = self._run_test(db.name, payload=payload,
+                                   args=["dontsegfault"])
+                print(f" ----- {i} -----")
+                print(p.stdout)
+
+                self.assertIn(p.returncode, exp)
+
+    def test_stripped(self):
+        #Stripped executables won't work correctly, but ensure they don't crash
+
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            s = pathlib.Path(tmpdirname) / "test_stripped"
+            subprocess.check_call(["strip", str(ROOT / "test"), "-o", str(s)])
+            with tempfile.NamedTemporaryFile() as db:
+                self.check_no_segfault(db, payload=str(s))
 
 if __name__ == '__main__':
         unittest.main(buffer=True, catchbreak=True)
