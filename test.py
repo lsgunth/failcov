@@ -21,6 +21,7 @@ class TestCode(enum.IntEnum):
     MEM_LEAK = 1000
     FD_LEAK = 1001
     FILE_LEAK = 1002
+    CLOSE_UNTRACKED = 1003
 
 class FailCovTestCase(unittest.TestCase):
     _expected_codes = [
@@ -28,7 +29,7 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.MEM_LEAK,            "y allocation failed"),
         (TestCode.EXPECTED_ERROR,      "Unable to open /dev/zero"),
         (TestCode.FD_LEAK,             "Failed to read /dev/zero"),
-        (TestCode.FD_LEAK,             "Failed to write /dev/zero"),
+        (TestCode.CLOSE_UNTRACKED,     "Failed to write /dev/zero"),
         (TestCode.SUCCESS,             "close injected failure"),
         (TestCode.EXPECTED_ERROR,      "Unable to open /dev/urandom"),
         (TestCode.FD_LEAK,             "Failed to read /dev/urandom"),
@@ -88,6 +89,11 @@ class FailCovTestCase(unittest.TestCase):
                     yield TestCode.EXPECTED_ERROR, title
                 else:
                     yield TestCode.FAILCOV_BUG_FOUND, title
+            elif ec == TestCode.CLOSE_UNTRACKED:
+                if "FAILCOV_IGNORE_ALL_UNTRACKED_CLOSES" in env:
+                    yield TestCode.EXPECTED_ERROR, title
+                else:
+                    yield TestCode.FAILCOV_BUG_FOUND, title
             else:
                 yield ec, title
 
@@ -112,6 +118,9 @@ class FailCovTestCase(unittest.TestCase):
 
     def test_ignore_file_leaks(self):
         self.run_tests(env={"FAILCOV_ALL_IGNORE_FILE_LEAKS": "y"})
+
+    def test_ignore_untracked_closes(self):
+        self.run_tests(env={"FAILCOV_IGNORE_ALL_UNTRACKED_CLOSES": "y"})
 
 if __name__ == '__main__':
         unittest.main(buffer=True, catchbreak=True)

@@ -31,10 +31,13 @@ static int test_fd(void *x)
 	rd = write(fd, x, 50);
 	if (rd < 0) {
 		perror("Failed to write /dev/zero");
+		close(fd);
+		close(819);
 		return 1;
 	}
 
 	close(fd);
+
 	return 0;
 }
 
