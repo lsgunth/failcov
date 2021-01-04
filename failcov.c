@@ -320,8 +320,10 @@ static bool should_ignore_err(const char *backtrace, const char *ignore_env,
 		return false;
 
 	ignore_cpy = strdup(ignore);
-	if (!ignore_cpy)
-		return false;
+	if (!ignore_cpy) {
+		perror("FAILCOV");
+		exit_error();
+	}
 
 	tok = strtok(ignore, " ");
 	while (tok) {
