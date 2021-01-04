@@ -93,6 +93,27 @@ static int test_fcloseall(void)
 	return 0;
 }
 
+static int test_fmemopen(void)
+{
+	char buf[4096];
+	FILE *f;
+	int ret;
+
+	f = fmemopen(buf, sizeof(buf), "w");
+	if (!f) {
+		perror("Unable to open memory FILE");
+		return 1;
+	}
+
+	ret = fclose(f);
+	if (ret == EOF) {
+		perror("Failure closing memory FILE");
+		return 1;
+	}
+
+	return 0;
+}
+
 int main()
 {
 	void *x, *y;
@@ -121,6 +142,10 @@ int main()
 		goto out;
 
 	ret = test_stdio(x);
+	if (ret)
+		goto out;
+
+	ret = test_fmemopen();
 	if (ret)
 		goto out;
 
