@@ -31,6 +31,34 @@ static int test_fd(void *x)
 	return 0;
 }
 
+static int test_openat(void)
+{
+	int val, fd, ret;
+	ssize_t rd;
+
+	fd = openat(AT_FDCWD, "/dev/urandom", O_RDONLY);
+	if (fd == -1) {
+		perror("Unable to open /dev/urandom");
+		return 1;
+	}
+
+	rd = read(fd, &val, sizeof(val));
+	if (rd != sizeof(val)) {
+		perror("Could not read /dev/urandom");
+		return 1;
+	}
+
+	srand(val);
+
+	ret = close(fd);
+	if (ret) {
+		perror("Error closing /dev/urandom");
+		return 1;
+	}
+
+	return 0;
+}
+
 static int test_stdio(void *x)
 {
 	ssize_t wr;
@@ -158,6 +186,10 @@ int main()
 	}
 
 	ret = test_fd(x);
+	if (ret)
+		goto out;
+
+	ret = test_openat();
 	if (ret)
 		goto out;
 
