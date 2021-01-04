@@ -505,23 +505,6 @@ void free(void *ptr)
 			      TAG "Attempted to free untracked pointer 0x%llx at:\n");
 }
 
-void *reallocarray(void *ptr, size_t nmemb, size_t size)
-{
-	void *ret;
-
-	ret = handle_call(reallocarray, void *, NULL, ENOMEM, ptr, nmemb,
-			  size);
-	if (ret) {
-		track_create((intptr_t)ret, allocation_table);
-		track_destroy((intptr_t)ptr, allocation_table,
-			      "FAILCOV_IGNORE_UNTRACKED_FREES",
-			      "FAILCOV_IGNORE_ALL_UNTRACKED_FREES",
-			      TAG "Attempted to reallocarray untracked pointer 0x%llx at:\n");
-	}
-
-	return ret;
-}
-
 int creat(const char *pathname, mode_t mode)
 {
 	int fd;
