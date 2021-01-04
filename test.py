@@ -54,6 +54,7 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.EXPECTED_ERROR,      "Unable to calloc memory"),
         (TestCode.EXPECTED_ERROR,      "Unable to realloc memory"),
         (TestCode.EXPECTED_ERROR,      "Unable to reallocarray memory"),
+        (TestCode.EXPECTED_ERROR,      "test_hash_table"),
         (TestCode.SUCCESS,             "printf/malloc injected failure"),
         (TestCode.EXPECTED_ERROR,      "Unable to open /dev/urandom"),
         (TestCode.EXPECTED_ERROR,      "Unable to open /dev/urandom (mem)"),

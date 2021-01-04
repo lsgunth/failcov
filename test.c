@@ -239,7 +239,29 @@ static int test_realloc(void)
 	return 0;
 }
 
-int main()
+/* Insert a large number of objects to ensure the hash table works */
+static int test_hash_table(void)
+{
+	const int count = 16;
+	void *memory[count];
+	int i, ret = 0;
+
+	for (i = 0; i < count; i++) {
+		memory[i] = malloc(32);
+		if (!memory[i]) {
+			ret = 1;
+			break;
+		}
+	}
+
+	for (i--; i >= 0; i--)
+		free(memory[i]);
+
+	return ret;
+}
+
+
+int main(void)
 {
 	void *x, *y;
 	int ret;
@@ -287,6 +309,10 @@ int main()
 		goto out;
 
 	ret = test_realloc();
+	if (ret)
+		goto out;
+
+	ret = test_hash_table();
 	if (ret)
 		goto out;
 
