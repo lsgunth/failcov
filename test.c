@@ -298,7 +298,7 @@ static int test_hash_table(void)
 }
 
 
-int main(void)
+int main(int argc, char *argv[])
 {
 	void *x, *y;
 	int ret;
@@ -310,7 +310,8 @@ int main(void)
 		 * to be covered (LCOV_EXCL_START)
 		 */
 		perror("x allocation failed");
-		printf("This will segfault: %d\n", *((unsigned char *)x));
+		if (argc == 1)
+			printf("This will segfault: %d\n", *((unsigned char *)x));
 		return 1;
 		/* LCOV_EXCL_STOP */
 	}
