@@ -637,6 +637,7 @@ int fcloseall(void)
 	struct hash_entry *h;
 	int i;
 
+	force_libc = true;
 	for (i = 0; i < HASH_TABLE_SIZE; i++) {
 		h = file_table[i];
 		while (h) {
@@ -649,6 +650,7 @@ int fcloseall(void)
 
 		file_table[i] = NULL;
 	}
+	force_libc = false;
 
 	return handle_call_close(fcloseall, int, EOF, ENOSPC);
 }
