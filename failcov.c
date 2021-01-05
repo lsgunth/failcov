@@ -217,6 +217,7 @@ static void write_callsite(FILE *dbf, struct hash_entry *h)
 
 static struct hash_entry *get_current_callsite(void)
 {
+	char *skip = getenv("FAILCOV_SKIP_INJECTION");
 	struct hash_entry *h = create_hash_entry();
 	unw_cursor_t cursor;
 	unw_context_t uc;
@@ -229,22 +230,27 @@ static struct hash_entry *get_current_callsite(void)
 
 	while (unw_step(&cursor) > 0) {
 		ret = unw_get_proc_name(&cursor, name, sizeof(name), &off);
-		if (ret != 0)
+		if (ret != 0) {
 			strcpy(name, "unknown");
-		else
+		} else {
+			if (skip && strstr(skip, name))
+				goto skip;
+
+			if (!strcmp(name, "gcov_do_dump"))
+				goto skip;
+
 			snprintf(name + strlen(name),
 				 sizeof(name) - strlen(name),
 				 "+0x%lx", off);
-
-		if (strstr(name, "gcov_do_dump")) {
-			free(h);
-			return NULL;
 		}
 
 		h->hash = djb_hash(name, h->hash);
 	}
 
 	return h;
+skip:
+	free(h);
+	return NULL;
 }
 
 static void print_backtrace(void)
