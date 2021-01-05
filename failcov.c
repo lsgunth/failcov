@@ -703,20 +703,25 @@ static void check_leaks(void)
 
 	force_libc = true;
 
+	pthread_mutex_lock(&hash_table_mutex);
 	for (i = 0; i < HASH_TABLE_SIZE; i++) {
 		hdl_leaks(allocation_table[i], "FAILCOV_IGNORE_MEM_LEAKS",
 			  "FAILCOV_IGNORE_ALL_MEM_LEAKS",
 			  TAG "Possible memory leak for 0x%llx allocated at:\n");
+		allocation_table[i] = NULL;
+
 		hdl_leaks(fd_table[i], "FAILCOV_IGNORE_FD_LEAKS",
 			  "FAILCOV_IGNORE_ALL_FD_LEAKS",
 			  TAG "Possible file descriptor leak for %lld opened at:\n");
+		fd_table[i] = NULL;
+
 		hdl_leaks(file_table[i], "FAILCOV_IGNORE_FILE_LEAKS",
 			  "FAILCOV_IGNORE_ALL_FILE_LEAKS",
 			  TAG "Possible unclosed file for 0x%llx opened at:\n");
+		file_table[i] = NULL;
 	}
+	pthread_mutex_unlock(&hash_table_mutex);
 
 	if (found_bug)
 		__exit_error("FAILCOV_BUG_FOUND", 33);
-
-	force_libc = false;
 }
