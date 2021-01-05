@@ -15,8 +15,8 @@ ROOT = pathlib.Path(__file__).absolute().parent
 class TestCode(enum.IntEnum):
     SUCCESS = 0
     EXPECTED_ERROR = 1
-    FAILCOV_ERROR = 32
-    FAILCOV_BUG_FOUND = 33
+    FAILINJ_ERROR = 32
+    FAILINJ_BUG_FOUND = 33
     SEGFAULT = -11
 
     MEM_LEAK = 1000
@@ -75,9 +75,9 @@ class FailCovTestCase(unittest.TestCase):
             payload = "./test"
         if env is None:
             env = {}
-        env.setdefault("LD_PRELOAD", str(ROOT / "failcov.so"))
+        env.setdefault("LD_PRELOAD", str(ROOT / "libfailinj.so"))
         if db is not None:
-            env["FAILCOV_DATABASE"] = str(db)
+            env["FAILINJ_DATABASE"] = str(db)
         return subprocess.run([payload] + args, cwd=ROOT, env=env,
                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                            text=True)
@@ -90,32 +90,32 @@ class FailCovTestCase(unittest.TestCase):
     def expected_codes(self, env):
         for ec, title in self._expected_codes:
             if ec == TestCode.MEM_LEAK:
-                if "FAILCOV_IGNORE_ALL_MEM_LEAKS" in env:
+                if "FAILINJ_IGNORE_ALL_MEM_LEAKS" in env:
                     yield TestCode.EXPECTED_ERROR, title
                 else:
-                    yield TestCode.FAILCOV_BUG_FOUND, title
+                    yield TestCode.FAILINJ_BUG_FOUND, title
             elif ec == TestCode.FD_LEAK:
-                if "FAILCOV_IGNORE_ALL_FD_LEAKS" in env:
+                if "FAILINJ_IGNORE_ALL_FD_LEAKS" in env:
                     yield TestCode.EXPECTED_ERROR, title
                 else:
-                    yield TestCode.FAILCOV_BUG_FOUND, title
+                    yield TestCode.FAILINJ_BUG_FOUND, title
             elif ec == TestCode.FILE_LEAK:
-                if "FAILCOV_IGNORE_ALL_FILE_LEAKS" in env:
+                if "FAILINJ_IGNORE_ALL_FILE_LEAKS" in env:
                     yield TestCode.EXPECTED_ERROR, title
                 else:
-                    yield TestCode.FAILCOV_BUG_FOUND, title
+                    yield TestCode.FAILINJ_BUG_FOUND, title
             elif ec == TestCode.CLOSE_UNTRACKED:
-                if "FAILCOV_IGNORE_ALL_UNTRACKED_CLOSES" in env:
+                if "FAILINJ_IGNORE_ALL_UNTRACKED_CLOSES" in env:
                     yield TestCode.EXPECTED_ERROR, title
                 else:
-                    yield TestCode.FAILCOV_BUG_FOUND, title
+                    yield TestCode.FAILINJ_BUG_FOUND, title
             elif ec == TestCode.IGNORE_MEM_LEAK:
-                if "FAILCOV_IGNORE_MEM_LEAKS" in env:
+                if "FAILINJ_IGNORE_MEM_LEAKS" in env:
                     yield TestCode.EXPECTED_ERROR, title
                 else:
-                    yield TestCode.FAILCOV_BUG_FOUND, title
+                    yield TestCode.FAILINJ_BUG_FOUND, title
             elif ec == TestCode.SKIPPED:
-                if "FAILCOV_SKIP_INJECTION" in env:
+                if "FAILINJ_SKIP_INJECTION" in env:
                     continue
                 else:
                     yield TestCode.EXPECTED_ERROR, title
@@ -136,50 +136,50 @@ class FailCovTestCase(unittest.TestCase):
         self.run_tests()
 
     def test_ignore_mem_leaks(self):
-        self.run_tests(env={"FAILCOV_ALL_IGNORE_MEM_LEAKS": "y"})
+        self.run_tests(env={"FAILINJ_ALL_IGNORE_MEM_LEAKS": "y"})
 
     def test_ignore_fd_leaks(self):
-        self.run_tests(env={"FAILCOV_ALL_IGNORE_FD_LEAKS": "y"})
+        self.run_tests(env={"FAILINJ_ALL_IGNORE_FD_LEAKS": "y"})
 
     def test_ignore_file_leaks(self):
-        self.run_tests(env={"FAILCOV_ALL_IGNORE_FILE_LEAKS": "y"})
+        self.run_tests(env={"FAILINJ_ALL_IGNORE_FILE_LEAKS": "y"})
 
     def test_ignore_untracked_closes(self):
-        self.run_tests(env={"FAILCOV_IGNORE_ALL_UNTRACKED_CLOSES": "y"})
+        self.run_tests(env={"FAILINJ_IGNORE_ALL_UNTRACKED_CLOSES": "y"})
 
     def test_ignore_specific(self):
-        self.run_tests(env={"FAILCOV_IGNORE_MEM_LEAKS": "test_ignore_leak"})
+        self.run_tests(env={"FAILINJ_IGNORE_MEM_LEAKS": "test_ignore_leak"})
 
     def test_skip_specific(self):
-        self.run_tests(env={"FAILCOV_SKIP_INJECTION": "test_skip_failure"})
+        self.run_tests(env={"FAILINJ_SKIP_INJECTION": "test_skip_failure"})
 
     def test_invalid_db(self):
         p = self.run_test("/not/a/valid/path/123/database")
-        self.assertEqual(TestCode.FAILCOV_ERROR, p.returncode)
+        self.assertEqual(TestCode.FAILINJ_ERROR, p.returncode)
 
     def test_custom_exit_err(self):
         err = 52
         p = self.run_test("/not/a/valid/path/123/database",
-                          env={"FAILCOV_EXIT_ERROR": str(err)})
+                          env={"FAILINJ_EXIT_ERROR": str(err)})
         self.assertEqual(52, p.returncode)
 
     def test_fulldb(self):
         p = self.run_test("/dev/full")
-        self.assertEqual(TestCode.FAILCOV_ERROR, p.returncode)
+        self.assertEqual(TestCode.FAILINJ_ERROR, p.returncode)
 
     def test_nodb(self):
         self.run_test(None)
         self.run_test(None)
-        os.unlink("failcov.db")
+        os.unlink("failinj.db")
 
     def check_no_segfault(self, db, iterations=20, payload=None, env=None,
-                          allow_failcov_err=False):
+                          allow_failinj_err=False):
         exp = (TestCode.SUCCESS,
                TestCode.EXPECTED_ERROR,
-               TestCode.FAILCOV_BUG_FOUND)
+               TestCode.FAILINJ_BUG_FOUND)
 
-        if allow_failcov_err:
-            exp += (TestCode.FAILCOV_ERROR, )
+        if allow_failinj_err:
+            exp += (TestCode.FAILINJ_ERROR, )
 
         for i in range(iterations):
             with self.subTest(i=i):
@@ -204,13 +204,13 @@ class FailCovTestCase(unittest.TestCase):
            There isn't much checking save for ensuring it doesn't segfault"""
 
         with tempfile.TemporaryDirectory() as tmpdirname:
-            lib = ROOT / "failcov.so"
-            lib2 = pathlib.Path(tmpdirname) / "failcov2.so"
+            lib = ROOT / "libfailinj.so"
+            lib2 = pathlib.Path(tmpdirname) / "libfailinj2.so"
             shutil.copy(lib, lib2)
             env = {"LD_PRELOAD": f"{lib2} {lib}",
-                   "FAILCOV_IGNORE_FILE_LEAKS": "should_fail",
-                   "FAILCOV_IGNORE_ALL_UNTRACKED_FREES": "y",
-                   "FAILCOV_IGNORE_ALL_MEM_LEAKS": "y"}
+                   "FAILINJ_IGNORE_FILE_LEAKS": "should_fail",
+                   "FAILINJ_IGNORE_ALL_UNTRACKED_FREES": "y",
+                   "FAILINJ_IGNORE_ALL_MEM_LEAKS": "y"}
 
             with tempfile.NamedTemporaryFile() as db:
                 for j in range(3):
@@ -219,10 +219,10 @@ class FailCovTestCase(unittest.TestCase):
                                            env=env)
                         print(f" ----- initial {j} -----")
                         print(p.stdout)
-                        self.assertEqual(p.returncode, TestCode.FAILCOV_ERROR)
+                        self.assertEqual(p.returncode, TestCode.FAILINJ_ERROR)
 
                 self.check_no_segfault(db, env=env, iterations=20,
-                                       allow_failcov_err=True)
+                                       allow_failinj_err=True)
 
 if __name__ == '__main__':
         unittest.main(buffer=True, catchbreak=True)

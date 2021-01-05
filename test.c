@@ -178,7 +178,7 @@ static int test_creat_fdopen(void)
 	char tmpn[128];
 	FILE *f;
 
-	snprintf(tmpn, sizeof(tmpn), "/tmp/failcov%d", rand());
+	snprintf(tmpn, sizeof(tmpn), "/tmp/failinj%d", rand());
 
 	fd = creat(tmpn, 0600);
 	if (fd == -1) {
