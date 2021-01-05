@@ -406,8 +406,7 @@ static void track_destroy(unsigned long long hash, struct hash_entry **table,
 		}
 		free(backtrace);
 	} else {
-		if (h->backtrace)
-			free(h->backtrace);
+		free(h->backtrace);
 		free(h);
 	}
 
@@ -641,8 +640,7 @@ int fcloseall(void)
 	for (i = 0; i < HASH_TABLE_SIZE; i++) {
 		h = file_table[i];
 		while (h) {
-			if (h->backtrace)
-				free(h->backtrace);
+			free(h->backtrace);
 			free(h);
 
 			h = h->next;
@@ -691,8 +689,7 @@ static void hdl_leaks(struct hash_entry *h, const char *ignore_env,
 				       ignore_all_env))
 			print_leak(h, msg);
 
-		if (h->backtrace)
-			free(h->backtrace);
+		free(h->backtrace);
 		free(h);
 
 		h = h->next;
