@@ -23,6 +23,7 @@ class TestCode(enum.IntEnum):
     FILE_LEAK = 1002
     CLOSE_UNTRACKED = 1003
     IGNORE_MEM_LEAK = 1004
+    SKIPPED = 1005
 
 class FailCovTestCase(unittest.TestCase):
     _expected_codes = [
@@ -57,6 +58,7 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.EXPECTED_ERROR,      "Unable to reallocarray memory"),
         (TestCode.EXPECTED_ERROR,      "Unable to allocate leaked memory"),
         (TestCode.IGNORE_MEM_LEAK,     "Unable to allocate ignored leak memory"),
+        (TestCode.SKIPPED,             "Unable to allocate skipped malloc"),
         (TestCode.EXPECTED_ERROR,      "test_hash_table"),
         (TestCode.SUCCESS,             "printf/malloc injected failure"),
         (TestCode.EXPECTED_ERROR,      "Unable to open /dev/urandom"),
@@ -109,6 +111,11 @@ class FailCovTestCase(unittest.TestCase):
                     yield TestCode.EXPECTED_ERROR, title
                 else:
                     yield TestCode.FAILCOV_BUG_FOUND, title
+            elif ec == TestCode.SKIPPED:
+                if "FAILCOV_SKIP_INJECTION" in env:
+                    continue
+                else:
+                    yield TestCode.EXPECTED_ERROR, title
             else:
                 yield ec, title
 
@@ -139,6 +146,9 @@ class FailCovTestCase(unittest.TestCase):
 
     def test_ignore_specific(self):
         self.run_tests(env={"FAILCOV_IGNORE_MEM_LEAKS": "test_ignore_leak"})
+
+    def test_skip_specific(self):
+        self.run_tests(env={"FAILCOV_SKIP_INJECTION": "test_skip_failure"})
 
     def test_invalid_db(self):
         p = self.run_test("/not/a/valid/path/123/database")

@@ -261,6 +261,21 @@ static int test_ignore_leak(void)
 	return 0;
 }
 
+__attribute__ ((noinline))
+static int test_skip_failure(void)
+{
+	void *x;
+
+	x = malloc(32);
+	if (!x) {
+		perror("Unable to allocate skipped malloc");
+		return 1;
+	}
+
+	free(x);
+	return 0;
+}
+
 /* Insert a large number of objects to ensure the hash table works */
 static int test_hash_table(void)
 {
@@ -335,6 +350,10 @@ int main(void)
 		goto out;
 
 	ret = test_ignore_leak();
+	if (ret)
+		goto out;
+
+	ret = test_skip_failure();
 	if (ret)
 		goto out;
 
