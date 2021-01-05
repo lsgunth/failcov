@@ -347,6 +347,7 @@ static char *get_backtrace_string(void)
 	unw_cursor_t cursor;
 	unw_context_t uc;
 	unw_word_t off;
+	char *retstr;
 	int boff = 0;
 	int ret;
 
@@ -362,7 +363,13 @@ static char *get_backtrace_string(void)
 				 "    %s+0x%lx\n", name, off);
 	}
 
-	return strdup(backtrace);
+	retstr = strdup(backtrace);
+	if (!retstr) {
+		perror("FAILCOV");
+		exit_error();
+	}
+
+	return retstr;
 }
 
 static void track_create(unsigned long long hash,
@@ -673,19 +680,14 @@ static void print_leak(struct hash_entry *h, const char *msg)
 {
 	found_bug = true;
 	fprintf(stderr, msg, h->hash);
-
-	if (h->backtrace)
-		fprintf(stderr, "%s", h->backtrace);
-	else
-		fprintf(stderr, "unknown\n");
+	fprintf(stderr, "%s", h->backtrace);
 }
 
 static void hdl_leaks(struct hash_entry *h, const char *ignore_env,
 		      const char *ignore_all_env, const char *msg)
 {
 	while (h) {
-		if (!h->backtrace ||
-		    !should_ignore_err(h->backtrace, ignore_env,
+		if (!should_ignore_err(h->backtrace, ignore_env,
 				       ignore_all_env))
 			print_leak(h, msg);
 
