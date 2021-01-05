@@ -5,6 +5,7 @@ import enum
 import unittest
 import os
 import pathlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -74,7 +75,7 @@ class FailCovTestCase(unittest.TestCase):
             payload = "./test"
         if env is None:
             env = {}
-        env["LD_PRELOAD"] = str(ROOT / "failcov.so")
+        env.setdefault("LD_PRELOAD", str(ROOT / "failcov.so"))
         if db is not None:
             env["FAILCOV_DATABASE"] = str(db)
         return subprocess.run([payload] + args, cwd=ROOT, env=env,
@@ -171,15 +172,19 @@ class FailCovTestCase(unittest.TestCase):
         self.run_test(None)
         os.unlink("failcov.db")
 
-    def check_no_segfault(self, db, iterations=20, payload=None):
+    def check_no_segfault(self, db, iterations=20, payload=None, env=None,
+                          allow_failcov_err=False):
         exp = (TestCode.SUCCESS,
                TestCode.EXPECTED_ERROR,
                TestCode.FAILCOV_BUG_FOUND)
 
+        if allow_failcov_err:
+            exp += (TestCode.FAILCOV_ERROR, )
+
         for i in range(iterations):
             with self.subTest(i=i):
                 p = self._run_test(db.name, payload=payload,
-                                   args=["dontsegfault"])
+                                   args=["dontsegfault"], env=env)
                 print(f" ----- {i} -----")
                 print(p.stdout)
 
@@ -193,6 +198,31 @@ class FailCovTestCase(unittest.TestCase):
             subprocess.check_call(["strip", str(ROOT / "test"), "-o", str(s)])
             with tempfile.NamedTemporaryFile() as db:
                 self.check_no_segfault(db, payload=str(s))
+
+    def test_zzdogfood(self):
+        """Test the library with itself to check the final corner cases.
+           There isn't much checking save for ensuring it doesn't segfault"""
+
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            lib = ROOT / "failcov.so"
+            lib2 = pathlib.Path(tmpdirname) / "failcov2.so"
+            shutil.copy(lib, lib2)
+            env = {"LD_PRELOAD": f"{lib2} {lib}",
+                   "FAILCOV_IGNORE_FILE_LEAKS": "should_fail",
+                   "FAILCOV_IGNORE_ALL_UNTRACKED_FREES": "y",
+                   "FAILCOV_IGNORE_ALL_MEM_LEAKS": "y"}
+
+            with tempfile.NamedTemporaryFile() as db:
+                for j in range(3):
+                    with self.subTest(j=j):
+                        p = self._run_test(db.name, args=["dontsegfault"],
+                                           env=env)
+                        print(f" ----- initial {j} -----")
+                        print(p.stdout)
+                        self.assertEqual(p.returncode, TestCode.FAILCOV_ERROR)
+
+                self.check_no_segfault(db, env=env, iterations=20,
+                                       allow_failcov_err=True)
 
 if __name__ == '__main__':
         unittest.main(buffer=True, catchbreak=True)
