@@ -601,22 +601,6 @@ FILE *fdopen(int fd, const char *mode)
 	return f;
 }
 
-FILE *freopen(const char *pathname, const char *mode, FILE *stream)
-{
-	FILE *f;
-
-	f = handle_call(fdopen, FILE *, NULL, EPERM, pathname, mode, stream);
-	if (f) {
-		track_create((intptr_t)f, file_table);
-		track_destroy((intptr_t)stream, file_table,
-			      "FAILCOV_IGNORE_UNTRACKED_FCLOSES",
-			      "FAILCOV_IGNORE_ALL_UNTRACKED_FCLOSES",
-			      TAG "Attempted to freopen untracked file 0x%llx at:\n");
-	}
-
-	return f;
-}
-
 FILE *fmemopen(void *buf, size_t size, const char *mode)
 {
 	FILE *f;
