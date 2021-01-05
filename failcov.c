@@ -634,7 +634,7 @@ int fclose(FILE *stream)
 	track_destroy((intptr_t)stream, file_table,
 		      "FAILCOV_IGNORE_UNTRACKED_FCLOSES",
 		      "FAILCOV_IGNORE_ALL_UNTRACKED_FCLOSES",
-		      TAG "Attempted to fclose untracked file 0xllx at:\n");
+		      TAG "Attempted to fclose untracked file 0x%llx at:\n");
 	return handle_call_close(fclose, int, EOF, ENOSPC, stream);
 }
 
