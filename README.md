@@ -66,7 +66,7 @@ conflict with an the test program's return code..
 
      LD_PRELOAD=./libfailinj.so ./program_to_test <args>
 
-   4. To restart the test from the beginning delete `failinj.db`
+   4. To restart the test from the beginning, delete `failinj.db`
 
 ## Configuration
 
