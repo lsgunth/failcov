@@ -42,7 +42,16 @@
 #include <sys/stat.h>
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
-#define TAG "\nFAILINJ: "
+
+#ifndef NAME
+#define NAME FAILINJ
+#endif
+
+#define _str(x) #x
+#define str(x) _str(x)
+#define SNAME str(NAME)
+#define TAG "\n" SNAME ": "
+#define PFX SNAME "_"
 
 static volatile bool use_early_allocator;
 static bool force_libc;
@@ -185,7 +194,7 @@ static void __exit_error(const char *env, int err)
 
 static void exit_error(void)
 {
-	__exit_error("FAILINJ_EXIT_ERROR", 32);
+	__exit_error(PFX "EXIT_ERROR", 32);
 }
 
 static struct hash_entry *create_hash_entry(void)
@@ -194,7 +203,7 @@ static struct hash_entry *create_hash_entry(void)
 
 	h = malloc(sizeof(*h));
 	if (!h) {
-		perror("FAILINJ");
+		perror(SNAME);
 		exit_error();
 	}
 
@@ -207,7 +216,7 @@ static struct hash_entry *create_hash_entry(void)
 
 static FILE *load_database(void)
 {
-	const char *fname = getenv("FAILINJ_DATABASE");
+	const char *fname = getenv(PFX "DATABASE");
 	struct hash_entry *h;
 	size_t read;
 	FILE *dbf;
@@ -271,7 +280,7 @@ static void write_callsite(FILE *dbf, struct hash_entry *h)
 
 static struct hash_entry *get_current_callsite(void)
 {
-	char *skip = getenv("FAILINJ_SKIP_INJECTION");
+	char *skip = getenv(PFX "SKIP_INJECTION");
 	struct hash_entry *h = create_hash_entry();
 	unw_cursor_t cursor;
 	unw_context_t uc;
@@ -380,7 +389,7 @@ static bool should_ignore_err(const char *backtrace, const char *ignore_env,
 	if (ignore_all)
 		return true;
 
-	if (!strcmp(ignore_env, "FAILINJ_IGNORE_MEM_LEAKS") &&
+	if (!strcmp(ignore_env, PFX "IGNORE_MEM_LEAKS") &&
 	    (strstr(backtrace, "_IO_file_doallocate") ||
 	     strstr(backtrace, "fopen")))
 		return true;
@@ -390,7 +399,7 @@ static bool should_ignore_err(const char *backtrace, const char *ignore_env,
 
 	ignore_cpy = strdup(ignore);
 	if (!ignore_cpy) {
-		perror("FAILINJ");
+		perror(SNAME);
 		exit_error();
 	}
 
@@ -432,7 +441,7 @@ static char *get_backtrace_string(void)
 
 	retstr = strdup(backtrace);
 	if (!retstr) {
-		perror("FAILINJ");
+		perror(SNAME);
 		exit_error();
 	}
 
@@ -581,8 +590,8 @@ void *realloc(void *ptr, size_t size)
 	ret = handle_call(realloc, void *, NULL, ENOMEM, ptr, size);
 	if (ret) {
 		track_destroy((intptr_t)ptr, allocation_table,
-			      "FAILINJ_IGNORE_UNTRACKED_FREES",
-			      "FAILINJ_IGNORE_ALL_UNTRACKED_FREES",
+			      PFX "IGNORE_UNTRACKED_FREES",
+			      PFX "IGNORE_ALL_UNTRACKED_FREES",
 			      TAG "Attempted to realloc untracked pointer 0x%llx at:\n");
 		track_create((intptr_t)ret, allocation_table);
 	}
@@ -595,8 +604,8 @@ void free(void *ptr)
 	call_super_void(free, ptr);
 	if (ptr)
 		track_destroy((intptr_t)ptr, allocation_table,
-			      "FAILINJ_IGNORE_UNTRACKED_FREES",
-			      "FAILINJ_IGNORE_ALL_UNTRACKED_FREES",
+			      PFX "IGNORE_UNTRACKED_FREES",
+			      PFX "IGNORE_ALL_UNTRACKED_FREES",
 			      TAG "Attempted to free untracked pointer 0x%llx at:\n");
 }
 
@@ -649,8 +658,8 @@ int openat(int dirfd, const char *pathname, int flags, ...)
 int close(int fd)
 {
 	track_destroy(fd, fd_table,
-		      "FAILINJ_IGNORE_UNTRACKED_CLOSES",
-		      "FAILINJ_IGNORE_ALL_UNTRACKED_CLOSES",
+		      PFX "IGNORE_UNTRACKED_CLOSES",
+		      PFX "IGNORE_ALL_UNTRACKED_CLOSES",
 		      TAG "Attempted to close untracked file descriptor %lld at:\n");
 	return handle_call_close(close, int, -1, EDQUOT, fd);
 }
@@ -684,8 +693,8 @@ FILE *fdopen(int fd, const char *mode)
 	if (f) {
 		track_create((intptr_t)f, file_table);
 		track_destroy(fd, fd_table,
-			      "FAILINJ_IGNORE_UNTRACKED_FCLOSES",
-			      "FAILINJ_IGNORE_ALL_UNTRACKED_FCLOSES",
+			      PFX "IGNORE_UNTRACKED_FCLOSES",
+			      PFX "IGNORE_ALL_UNTRACKED_FCLOSES",
 			      TAG "Attempted to fdopen untracked file descriptor %lld at:\n");
 	}
 
@@ -717,8 +726,8 @@ FILE *tmpfile(void)
 int fclose(FILE *stream)
 {
 	track_destroy((intptr_t)stream, file_table,
-		      "FAILINJ_IGNORE_UNTRACKED_FCLOSES",
-		      "FAILINJ_IGNORE_ALL_UNTRACKED_FCLOSES",
+		      PFX "IGNORE_UNTRACKED_FCLOSES",
+		      PFX "IGNORE_ALL_UNTRACKED_FCLOSES",
 		      TAG "Attempted to fclose untracked file 0x%llx at:\n");
 	return handle_call_close(fclose, int, EOF, ENOSPC, stream);
 }
@@ -822,18 +831,18 @@ static void check_leaks(void)
 
 	pthread_mutex_lock(&hash_table_mutex);
 	for (i = 0; i < HASH_TABLE_SIZE; i++) {
-		hdl_leaks(allocation_table[i], "FAILINJ_IGNORE_MEM_LEAKS",
-			  "FAILINJ_IGNORE_ALL_MEM_LEAKS",
+		hdl_leaks(allocation_table[i], PFX "IGNORE_MEM_LEAKS",
+			  PFX "IGNORE_ALL_MEM_LEAKS",
 			  TAG "Possible memory leak for 0x%llx allocated at:\n");
 		allocation_table[i] = NULL;
 
-		hdl_leaks(fd_table[i], "FAILINJ_IGNORE_FD_LEAKS",
-			  "FAILINJ_IGNORE_ALL_FD_LEAKS",
+		hdl_leaks(fd_table[i], PFX "IGNORE_FD_LEAKS",
+			  PFX "IGNORE_ALL_FD_LEAKS",
 			  TAG "Possible file descriptor leak for %lld opened at:\n");
 		fd_table[i] = NULL;
 
-		hdl_leaks(file_table[i], "FAILINJ_IGNORE_FILE_LEAKS",
-			  "FAILINJ_IGNORE_ALL_FILE_LEAKS",
+		hdl_leaks(file_table[i], PFX "IGNORE_FILE_LEAKS",
+			  PFX "IGNORE_ALL_FILE_LEAKS",
 			  TAG "Possible unclosed file for 0x%llx opened at:\n");
 		file_table[i] = NULL;
 
@@ -842,5 +851,5 @@ static void check_leaks(void)
 	pthread_mutex_unlock(&hash_table_mutex);
 
 	if (found_bug)
-		__exit_error("FAILINJ_BUG_FOUND", 33);
+		__exit_error(PFX "BUG_FOUND", 33);
 }
