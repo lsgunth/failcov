@@ -41,6 +41,7 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.EXPECTED_ERROR,      "Unable to open /dev/null"),
         (TestCode.FILE_LEAK,           "Unable to write to /dev/null"),
         (TestCode.SUCCESS,             "fwrite/malloc injected failure"),
+        (TestCode.FILE_LEAK,           "Unable to read from /dev/null"),
         (TestCode.FILE_LEAK,           "Error while flushing to /dev/null"),
         (TestCode.EXPECTED_ERROR,      "Error while to closing /dev/null"),
         (TestCode.EXPECTED_ERROR,      "Unable to open memory FILE"),

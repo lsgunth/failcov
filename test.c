@@ -71,19 +71,26 @@ static int test_openat(void)
 
 static int test_stdio(void *x)
 {
-	ssize_t wr;
+	ssize_t cnt;
 	FILE *f;
 	int ret;
 
-	f = fopen("/dev/null", "w");
+	f = fopen("/dev/null", "w+");
 	if (!f) {
 		perror("Unable to open /dev/null");
 		return 1;
 	}
 
-	wr = fwrite(x, 1, 50, f);
-	if (wr != 50) {
+	cnt = fwrite(x, 1, 50, f);
+	if (cnt != 50) {
 		perror("Unable to write to /dev/null");
+		return 1;
+	}
+
+	cnt = fread(x, 1, 50, f);
+	if (cnt != 50 && ferror(f)) {
+		perror("Unable to read from /dev/null");
+		clearerr(f);
 		return 1;
 	}
 
