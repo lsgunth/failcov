@@ -94,9 +94,13 @@ static int hash_table_insert(struct hash_entry *n, struct hash_entry **table)
 			goto out;
 		}
 
+                if ((*slot)->hash > n->hash)
+			break;
+
 		slot = &((*slot)->next);
 	}
 
+	n->next = *slot;
 	*slot = n;
 
 out:
@@ -119,6 +123,9 @@ static struct hash_entry *hash_table_pop(unsigned long long hash,
 			*slot = ret->next;
 			goto out;
 		}
+
+		if ((*slot)->hash > hash)
+			goto out;
 
 		slot = &((*slot)->next);
 	}
