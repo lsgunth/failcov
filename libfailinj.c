@@ -61,6 +61,7 @@ static struct hash_entry *callsite_table[HASH_TABLE_SIZE];
 static struct hash_entry *allocation_table[HASH_TABLE_SIZE];
 static struct hash_entry *fd_table[HASH_TABLE_SIZE];
 static struct hash_entry *file_table[HASH_TABLE_SIZE];
+static struct hash_entry *ferror_table[HASH_TABLE_SIZE];
 
 /*
  * Simple hash function based on
@@ -126,6 +127,20 @@ static struct hash_entry **__hash_table_find(unsigned long long hash,
 	}
 
 	return NULL;
+}
+
+static struct hash_entry *hash_table_find(unsigned long long hash,
+					  struct hash_entry **table)
+{
+	struct hash_entry **slot, *ret = NULL;
+
+	pthread_mutex_lock(&hash_table_mutex);
+	slot = __hash_table_find(hash, table);
+	if (slot)
+		ret = *slot;
+	pthread_mutex_unlock(&hash_table_mutex);
+
+	return ret;
 }
 
 static struct hash_entry *hash_table_pop(unsigned long long hash,
@@ -718,10 +733,40 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 			   stream);
 }
 
-/*
- * fread(): simulating an error for fread is not possible seeing the error
- * indicator cannot be set (see ferror()).
- */
+size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
+	struct hash_entry *h;
+
+	if (!force_libc && should_fail("fread")) {
+		h = create_hash_entry();
+		h->hash = (intptr_t)stream;
+		hash_table_insert(h, ferror_table);
+		errno = EIO;
+		return 0;
+	}
+
+	return call_super(fread, size_t, ptr, size, nmemb, stream);
+}
+
+int ferror(FILE *stream)
+{
+	if (!force_libc && hash_table_find((intptr_t)stream, ferror_table))
+		return 1;
+
+	return call_super(ferror, int, stream);
+}
+
+void clearerr(FILE *stream)
+{
+	struct hash_entry *h;
+
+	if (!force_libc) {
+		h = hash_table_pop((intptr_t)stream, ferror_table);
+		free(h);
+	}
+
+	return call_super(clearerr, void, stream);
+}
 
 int fflush(FILE *stream)
 {
@@ -739,8 +784,8 @@ static void hdl_leaks(struct hash_entry *h, const char *ignore_env,
 		      const char *ignore_all_env, const char *msg)
 {
 	while (h) {
-		if (!should_ignore_err(h->backtrace, ignore_env,
-				       ignore_all_env))
+		if (msg && !should_ignore_err(h->backtrace, ignore_env,
+					      ignore_all_env))
 			print_leak(h, msg);
 
 		free(h->backtrace);
@@ -773,6 +818,8 @@ static void check_leaks(void)
 			  "FAILINJ_IGNORE_ALL_FILE_LEAKS",
 			  TAG "Possible unclosed file for 0x%llx opened at:\n");
 		file_table[i] = NULL;
+
+		hdl_leaks(ferror_table[i], NULL, NULL, NULL);
 	}
 	pthread_mutex_unlock(&hash_table_mutex);
 
