@@ -108,30 +108,39 @@ out:
 	return ret;
 }
 
+static struct hash_entry **__hash_table_find(unsigned long long hash,
+					     struct hash_entry **table)
+{
+	struct hash_entry **slot;
+
+	slot = &table[hash & HASH_TABLE_MASK];
+
+	while (*slot) {
+		if ((*slot)->hash == hash)
+			return slot;
+
+		if ((*slot)->hash > hash)
+			return NULL;
+
+		slot = &((*slot)->next);
+	}
+
+	return NULL;
+}
+
 static struct hash_entry *hash_table_pop(unsigned long long hash,
 					 struct hash_entry **table)
 {
 	struct hash_entry **slot, *ret = NULL;
 
 	pthread_mutex_lock(&hash_table_mutex);
-
-	slot = &table[hash & HASH_TABLE_MASK];
-
-	while (*slot) {
-		if ((*slot)->hash == hash) {
-			ret = *slot;
-			*slot = ret->next;
-			goto out;
-		}
-
-		if ((*slot)->hash > hash)
-			goto out;
-
-		slot = &((*slot)->next);
+	slot = __hash_table_find(hash, table);
+	if (slot) {
+		ret = *slot;
+		*slot = ret->next;
 	}
-
-out:
 	pthread_mutex_unlock(&hash_table_mutex);
+
 	return ret;
 }
 
