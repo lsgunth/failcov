@@ -198,14 +198,15 @@ class FailCovTestCase(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdirname:
             lib = ROOT / "libfailinj.so"
-            lib2 = pathlib.Path(tmpdirname) / "libfailinj2.so"
-            shutil.copy(lib, lib2)
-            env = {"LD_PRELOAD": f"{lib2} {lib}",
-                   "FAILINJ_IGNORE_FILE_LEAKS": "should_fail",
-                   "FAILINJ_IGNORE_ALL_UNTRACKED_FREES": "y",
-                   "FAILINJ_IGNORE_ALL_MEM_LEAKS": "y"}
+            lib2 = ROOT / "libfailinj2.so"
 
-            with tempfile.NamedTemporaryFile() as db:
+            with tempfile.NamedTemporaryFile() as db, \
+                 tempfile.NamedTemporaryFile() as db2:
+                env = {"LD_PRELOAD": f"{lib} {lib2}",
+                       "FAILINJ2_DATABASE": db2.name,
+                       "FAILINJ2_IGNORE_FILE_LEAKS": "should_fail",
+                       "FAILINJ2_IGNORE_ALL_UNTRACKED_FREES": "y",
+                       "FAILINJ2_IGNORE_ALL_MEM_LEAKS": "y"}
                 for j in range(3):
                     with self.subTest(j=j):
                         p = self._run_test(db.name, args=["dontsegfault"],
