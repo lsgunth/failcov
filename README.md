@@ -150,5 +150,5 @@ bugs are found.
 [mallocfail]: https://github.com/ralight/mallocfail
 
 [CI]: https://github.com/lsgunth/libfailinj/workflows/CI/badge.svg
-[Coverage Status]: https://coveralls.io/repos/github/lsgunth/failcov/badge.svg?branch=main
-[Coverage Details]: https://coveralls.io/github/lsgunth/failcov?branch=main
+[Coverage Status]: https://coveralls.io/repos/github/lsgunth/libfailinj/badge.svg?branch=main
+[Coverage Details]: https://coveralls.io/github/lsgunth/libfailinj?branch=main
