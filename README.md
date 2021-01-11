@@ -12,7 +12,7 @@ The idea for this library was inspired by the [mallocfail] project.
 However, this project had the following additional goals that mallocfail
 did not meet::
 
-  1. Fewer dependencies. The goal is for this library to consist of onl<y
+  1. Fewer dependencies. The goal is for this library to consist of only
      a single C file that can be easily integrated into an existing testing
      framework. The only dependency is `libunwind` (which is packaged by
      most distributions).
