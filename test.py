@@ -208,16 +208,20 @@ class FailCovTestCase(unittest.TestCase):
                        "FAILINJ2_DATABASE": db2.name,
                        "FAILINJ2_IGNORE_FILE_LEAKS": "should_fail",
                        "FAILINJ2_IGNORE_ALL_UNTRACKED_FREES": "y",
-                       "FAILINJ2_IGNORE_ALL_MEM_LEAKS": "y"}
+                       "FAILINJ2_IGNORE_ALL_MEM_LEAKS": "y",
+                       "FAILINJ2_SKIP_INJECTION": "_ULx86_64_get_proc_name",
+                       "FAILINJ_IGNORE_MEM_LEAKS": "none",
+                      }
+
                 for j in range(3):
                     with self.subTest(j=j):
                         p = self._run_test(db.name, args=["dontsegfault"],
-                                           env=env)
+                                           env=env, payload="./test2")
                         print(f" ----- initial {j} -----")
                         print(p.stdout)
                         self.assertEqual(p.returncode, TestCode.FAILINJ_ERROR)
 
-                self.check_no_segfault(db, env=env, iterations=20,
+                self.check_no_segfault(db, env=env, payload="./test2",
                                        allow_failinj_err=True)
 
 if __name__ == '__main__':

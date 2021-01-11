@@ -10,7 +10,7 @@ ifeq ($(COVERAGE),1)
   LDFLAGS += -fprofile-arcs
 endif
 
-all: libfailinj.so libfailinj2.so test
+all: libfailinj.so libfailinj2.so test test2
 
 libfailinj.so: libfailinj.c
 	$(CC) -shared -fPIC $(CPPFLAGS) $(CFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
@@ -18,11 +18,9 @@ libfailinj.so: libfailinj.c
 libfailinj2.so: libfailinj.c
 	$(CC) -shared -fPIC -O2 -DNAME=FAILINJ2 $^ $(LDLIBS) -o $@
 
-test: test.c
-
 coverage.info:
 	geninfo $(LCOVFLAGS) . -o $@
 
 clean:
-	-rm -f libfailinj.so libfailinj2.so failinj.db test *.gcno *.gcda \
-		*.info
+	-rm -f libfailinj.so libfailinj2.so failinj.db test test2 \
+		*.gcno *.gcda *.info
