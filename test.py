@@ -17,6 +17,7 @@ class TestCode(enum.IntEnum):
     EXPECTED_ERROR = 1
     FAILINJ_ERROR = 32
     FAILINJ_BUG_FOUND = 33
+    FAILINJ_DONE = 34
     SEGFAULT = -11
 
     MEM_LEAK = 1000
@@ -60,7 +61,7 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.EXPECTED_ERROR,      "Unable to open /dev/urandom"),
         (TestCode.FILE_LEAK,           "Unable to open /dev/random"),
         (TestCode.EXPECTED_ERROR,      "Error while closing all files"),
-        (TestCode.SUCCESS,             "no failures"),
+        (TestCode.FAILINJ_DONE,        "no failures"),
     ]
 
     def _run_test(self, db, env=None, payload=None, args=[]):
@@ -169,7 +170,8 @@ class FailCovTestCase(unittest.TestCase):
                           allow_failinj_err=False):
         exp = (TestCode.SUCCESS,
                TestCode.EXPECTED_ERROR,
-               TestCode.FAILINJ_BUG_FOUND)
+               TestCode.FAILINJ_BUG_FOUND,
+               TestCode.FAILINJ_DONE)
 
         if allow_failinj_err:
             exp += (TestCode.FAILINJ_ERROR, )

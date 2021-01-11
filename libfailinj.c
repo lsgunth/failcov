@@ -56,6 +56,8 @@
 static volatile bool use_early_allocator;
 static bool force_libc;
 static bool found_bug;
+static bool has_injected_failure;
+static bool failed;
 
 struct hash_entry {
 	unsigned long long hash;
@@ -194,6 +196,7 @@ static void __exit_error(const char *env, int err)
 
 static void exit_error(void)
 {
+	failed = true;
 	__exit_error(PFX "EXIT_ERROR", 32);
 }
 
@@ -349,11 +352,10 @@ static void print_injection(void)
 static bool should_fail(const char *name)
 {
 	static FILE *dbf = NULL;
-	static bool has_failed;
 	struct hash_entry *h;
 	bool ret = false;
 
-	if (has_failed)
+	if (has_injected_failure)
 		return false;
 
 	force_libc = true;
@@ -371,7 +373,7 @@ static bool should_fail(const char *name)
 	} else {
 		write_callsite(dbf, h);
 		print_injection();
-		has_failed = true;
+		has_injected_failure = true;
 	}
 
 out:
@@ -850,6 +852,11 @@ static void check_leaks(void)
 	}
 	pthread_mutex_unlock(&hash_table_mutex);
 
+	if (failed)
+		return;
+
+	if (!has_injected_failure)
+		__exit_error(PFX "EXIT_DONE", 34);
 	if (found_bug)
 		__exit_error(PFX "BUG_FOUND", 33);
 }
