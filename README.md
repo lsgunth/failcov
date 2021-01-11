@@ -90,6 +90,9 @@ calls under a specific function.
      This is fairly simplistic at this point so care may need to be
      taken with overly generally function names.
 
+  * `FAILINJ_EXIT_DONE` - Error code to use when no failure was injected
+    and, therefore, all error paths have seen an injected error.
+
 The following environment variables can be used to ignore specific types
 of errors in specific functions. The all take a space separated list of
 function names which, if seen in the back trace, cause libfailinj to
