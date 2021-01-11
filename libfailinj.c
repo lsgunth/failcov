@@ -502,6 +502,18 @@ static void *early_allocator(size_t size)
 
 #define call_super(name, ret_type, ...) ({ \
 	static ret_type (*__super)(); \
+	ret_type ret; \
+	if (!__super) { \
+		use_early_allocator = true; \
+		__super = dlsym(RTLD_NEXT, #name); \
+		use_early_allocator = false; \
+	} \
+	ret = __super(__VA_ARGS__); \
+	ret; \
+})
+
+#define call_super_void(name, ...) ({ \
+	static void (*__super)(); \
 	if (!__super) { \
 		use_early_allocator = true; \
 		__super = dlsym(RTLD_NEXT, #name); \
@@ -574,7 +586,7 @@ void *realloc(void *ptr, size_t size)
 
 void free(void *ptr)
 {
-	call_super(free, void, ptr);
+	call_super_void(free, ptr);
 	if (ptr)
 		track_destroy((intptr_t)ptr, allocation_table,
 			      "FAILINJ_IGNORE_UNTRACKED_FREES",
@@ -765,7 +777,7 @@ void clearerr(FILE *stream)
 		free(h);
 	}
 
-	return call_super(clearerr, void, stream);
+	call_super_void(clearerr, stream);
 }
 
 int fflush(FILE *stream)
