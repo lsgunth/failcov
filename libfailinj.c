@@ -501,6 +501,7 @@ static void *early_allocator(size_t size)
 }
 
 #define call_super(name, ret_type, ...) ({ \
+	bool last_force_libc = force_libc; \
 	static ret_type (*__super)(); \
 	ret_type ret; \
 	if (!__super) { \
@@ -508,18 +509,23 @@ static void *early_allocator(size_t size)
 		__super = dlsym(RTLD_NEXT, #name); \
 		use_early_allocator = false; \
 	} \
+	force_libc = true; \
 	ret = __super(__VA_ARGS__); \
+	force_libc = last_force_libc; \
 	ret; \
 })
 
 #define call_super_void(name, ...) ({ \
+	bool last_force_libc = force_libc; \
 	static void (*__super)(); \
 	if (!__super) { \
 		use_early_allocator = true; \
 		__super = dlsym(RTLD_NEXT, #name); \
 		use_early_allocator = false; \
 	} \
+	force_libc = true; \
 	__super(__VA_ARGS__); \
+	force_libc = last_force_libc; \
 })
 
 #define handle_call(name, ret_type, err_ret, err_errno, ...) ({ \
