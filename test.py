@@ -208,9 +208,11 @@ class FailCovTestCase(unittest.TestCase):
                        "FAILINJ2_DATABASE": db2.name,
                        "FAILINJ2_IGNORE_FILE_LEAKS": "should_fail",
                        "FAILINJ2_IGNORE_ALL_UNTRACKED_FREES": "y",
+                       "FAILINJ2_IGNORE_ALL_UNTRACKED_CLOSES": "y",
                        "FAILINJ2_IGNORE_ALL_MEM_LEAKS": "y",
                        "FAILINJ2_SKIP_INJECTION": "_ULx86_64_get_proc_name",
                        "FAILINJ_IGNORE_MEM_LEAKS": "none",
+                       "FAILINJ_IGNORE_UNTRACKED_CLOSES": "none",
                       }
 
                 for j in range(3):
