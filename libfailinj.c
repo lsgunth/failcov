@@ -561,8 +561,12 @@ void *malloc(size_t size)
 {
 	void *ret;
 
+	/*
+	 * glibc does not use malloc inside dlsym so this will never
+	 * be hit, but include it here in case this ever changes
+	 */
 	if (use_early_allocator)
-		return early_allocator(size);
+		return early_allocator(size); /* LCOV_EXCL_LINE */
 
 	ret = handle_call(malloc, void *, NULL, ENOMEM, size);
 	if (ret)
