@@ -5,7 +5,7 @@ LDLIBS=-ldl -lunwind
 LCOVFLAGS=--no-external
 
 ifeq ($(COVERAGE),1)
-  CPPFLAGS += -DGCOV
+  CPPFLAGS += -DGCOV -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1
   CFLAGS += -fprofile-arcs -ftest-coverage -Og
   LDFLAGS += -fprofile-arcs
 endif
