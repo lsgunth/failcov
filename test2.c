@@ -13,6 +13,9 @@ int main(void)
 		return 1;
 	}
 
+	putc('I', stdout);
+	printf("t's %s!\n", x);
+
 	free(x);
 	close(88);
 	return 0;

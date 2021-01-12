@@ -57,7 +57,6 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.IGNORE_MEM_LEAK,     "Unable to allocate ignored leak memory"),
         (TestCode.SKIPPED,             "Unable to allocate skipped malloc"),
         (TestCode.EXPECTED_ERROR,      "test_hash_table"),
-        (TestCode.SUCCESS,             "printf/malloc injected failure"),
         (TestCode.EXPECTED_ERROR,      "Unable to open /dev/urandom"),
         (TestCode.FILE_LEAK,           "Unable to open /dev/random"),
         (TestCode.EXPECTED_ERROR,      "Error while closing all files"),

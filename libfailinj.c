@@ -806,6 +806,60 @@ int fflush(FILE *stream)
 	return handle_call(fflush, int, EOF, ENOSPC, stream);
 }
 
+int fputc(int c, FILE *stream)
+{
+	return call_super(fputc, int, c, stream);
+}
+
+int fputs(const char *s, FILE *stream)
+{
+	return call_super(fputs, int, s, stream);
+}
+
+int putc(int c, FILE *stream)
+{
+	return call_super(putc, int, c, stream);
+}
+
+int puts(const char *s)
+{
+	return call_super(puts, int, s);
+}
+
+int printf(const char *format, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, format);
+	ret = vprintf(format, ap);
+	va_end(ap);
+
+	return ret;
+}
+
+int fprintf(FILE *stream, const char *format, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, format);
+	ret = vfprintf(stream, format, ap);
+	va_end(ap);
+
+	return ret;
+}
+
+int vprintf(const char *format, va_list ap)
+{
+	return call_super(vprintf, int, format, ap);
+}
+
+int vfprintf(FILE *stream, const char *format, va_list ap)
+{
+	return call_super(vfprintf, int, stream, format, ap);
+}
+
 static void print_leak(struct hash_entry *h, const char *msg)
 {
 	found_bug = true;
