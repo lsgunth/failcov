@@ -391,11 +391,6 @@ static bool should_ignore_err(const char *backtrace, const char *ignore_env,
 	if (ignore_all)
 		return true;
 
-	if (!strcmp(ignore_env, PFX "IGNORE_MEM_LEAKS") &&
-	    (strstr(backtrace, "_IO_file_doallocate") ||
-	     strstr(backtrace, "fopen")))
-		return true;
-
 	if (!ignore)
 		return false;
 
