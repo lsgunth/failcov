@@ -27,8 +27,8 @@ did not meet::
      valgrind to ensure no memory is leaked, however valgrind does not
      play well with LD_PRELOAD so this was not possible. Instead, this
      library does some rudimentary checking to ensure all `malloc()`
-     calls have a corresponding free() call and all open() calls have
-     a corresponding close() call.
+     calls have a corresponding `free()` call and all `open()` calls have
+     a corresponding `close()` call.
 
 ## Theory of Operation
 
@@ -109,14 +109,14 @@ ignore errors under those functions.
   * `FAILINJ_IGNORE_FILE_LEAKS` - Ignore FILEs that were fopened but
     never fclosed.
 
-  * `FAILINJ_IGNORE_UNTRACKED_FREES` - Ignore free() calls that did not
-    have a corresponding malloc() call.
+  * `FAILINJ_IGNORE_UNTRACKED_FREES` - Ignore `free()` calls that did not
+    have a corresponding `malloc()` call.
 
-  * `FAILINJ_IGNORE_UNTRACKED_CLOSES` - Ignore close() calls that did not
-    have a corresponding open() call.
+  * `FAILINJ_IGNORE_UNTRACKED_CLOSES` - Ignore `close()` calls that did not
+    have a corresponding `open()` call.
 
-  * `FAILINJ_IGNORE_UNTRACKED_FCLOSES` - Ignore fclose() calls that did not
-    have a corresponding fopen() call.
+  * `FAILINJ_IGNORE_UNTRACKED_FCLOSES` - Ignore `fclose()` calls that did not
+    have a corresponding `fopen()` call.
 
 The following environment variables, if set at all, cause libfailinj to
 ignore entire classes of errors.
