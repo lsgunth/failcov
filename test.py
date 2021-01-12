@@ -166,7 +166,7 @@ class FailCovTestCase(unittest.TestCase):
         self.run_test(None)
         os.unlink("failinj.db")
 
-    def check_no_segfault(self, db, iterations=20, payload=None, env=None,
+    def check_no_segfault(self, db, iterations=25, payload=None, env=None,
                           allow_failinj_err=False):
         exp = (TestCode.SUCCESS,
                TestCode.EXPECTED_ERROR,
@@ -224,7 +224,8 @@ class FailCovTestCase(unittest.TestCase):
                         self.assertEqual(p.returncode, TestCode.FAILINJ_ERROR)
 
                 self.check_no_segfault(db, env=env, payload="./test2",
-                                       allow_failinj_err=True)
+                                       allow_failinj_err=True,
+                                       iterations=15)
 
 if __name__ == '__main__':
         unittest.main(buffer=True, catchbreak=True)

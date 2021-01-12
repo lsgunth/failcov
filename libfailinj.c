@@ -302,7 +302,7 @@ static struct hash_entry *get_current_callsite(void)
 			if (skip && strstr(skip, name))
 				goto skip;
 
-			if (!strcmp(name, "gcov_do_dump"))
+			if (!strcmp(name, "exit"))
 				goto skip;
 
 			snprintf(name + strlen(name),
