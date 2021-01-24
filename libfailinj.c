@@ -766,10 +766,12 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 	struct hash_entry *h;
 
 	if (!force_libc && should_fail("fread")) {
+		force_libc = true;
 		h = create_hash_entry();
 		h->hash = (intptr_t)stream;
 		hash_table_insert(h, ferror_table);
 		errno = EIO;
+		force_libc = false;
 		return 0;
 	}
 
