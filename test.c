@@ -94,6 +94,13 @@ static int test_stdio(void *x)
 		return 1;
 	}
 
+	cnt = fscanf(f, "abc\n");
+	if (cnt == EOF && ferror(f)) {
+		perror("Unable to fscan from /dev/null");
+		clearerr(f);
+		return 1;
+	}
+
 	ret = fflush(f);
 	if (ret == EOF) {
 		perror("Error while flushing to /dev/null");
