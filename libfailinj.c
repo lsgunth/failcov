@@ -857,6 +857,52 @@ int vfprintf(FILE *stream, const char *format, va_list ap)
 	return call_super(vfprintf, int, stream, format, ap);
 }
 
+int fscanf(FILE *stream, const char *format, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, format);
+	ret = vfscanf(stream, format, ap);
+	va_end(ap);
+
+	return ret;
+}
+
+int sscanf(const char *str, const char *format, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, format);
+	ret = vsscanf(str, format, ap);
+	va_end(ap);
+
+	return ret;
+}
+
+int vsscanf(const char *str, const char *format, va_list ap)
+{
+	return handle_call(vsscanf, int, -1, ENOMEM, str, format, ap);
+}
+
+int vfscanf(FILE *stream, const char *format, va_list ap)
+{
+	struct hash_entry *h;
+
+	if (!force_libc && should_fail("vfscanf")) {
+		force_libc = true;
+		h = create_hash_entry();
+		h->hash = (intptr_t)stream;
+		hash_table_insert(h, ferror_table);
+		errno = EIO;
+		force_libc = false;
+		return EOF;
+	}
+
+	return call_super(vfscanf, int, stream, format, ap);
+}
+
 static void print_leak(struct hash_entry *h, const char *msg)
 {
 	found_bug = true;
