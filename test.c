@@ -116,6 +116,21 @@ static int test_stdio(void *x)
 	return ret;
 }
 
+static volatile int test_scanf(void)
+{
+	const char test[] = "Hello: 12345\n";
+	int rc, x;
+
+	rc = sscanf(test, "Hello: %d", &x);
+	if (rc != 1) {
+		fprintf(stderr, "%d\n", rc);
+		perror("sscanf failed");
+		return 1;
+	}
+
+	return 0;
+}
+
 static int test_fcloseall(void)
 {
 	FILE *a, *b;
@@ -345,6 +360,10 @@ int main(int argc, char *argv[])
 		goto out;
 
 	ret = test_stdio(x);
+	if (ret)
+		goto out;
+
+	ret = test_scanf();
 	if (ret)
 		goto out;
 

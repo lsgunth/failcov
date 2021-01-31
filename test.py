@@ -44,6 +44,7 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.FILE_LEAK,           "Unable to scan from /dev/null"),
         (TestCode.FILE_LEAK,           "Error while flushing to /dev/null"),
         (TestCode.EXPECTED_ERROR,      "Error while to closing /dev/null"),
+        (TestCode.EXPECTED_ERROR,      "sscanf failed"),
         (TestCode.EXPECTED_ERROR,      "Unable to open memory FILE"),
         (TestCode.EXPECTED_ERROR,      "Failure closing memory FILE"),
         (TestCode.EXPECTED_ERROR,      "Unable to open temporary FILE"),
