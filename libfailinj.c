@@ -857,6 +857,9 @@ int vfprintf(FILE *stream, const char *format, va_list ap)
 	return call_super(vfprintf, int, stream, format, ap);
 }
 
+#undef vfscanf
+#undef vsscanf
+
 int fscanf(FILE *stream, const char *format, ...)
 {
 	va_list ap;
@@ -902,6 +905,59 @@ int vfscanf(FILE *stream, const char *format, va_list ap)
 
 	return call_super(vfscanf, int, stream, format, ap);
 }
+
+#if !__GLIBC_PREREQ(2,29)
+/*
+ * Historically glibc used a different name for scanf in different conditions.
+ * As of 2.29 this is no longer the case and this will cause a duplicate
+ * symbol with the above functions.
+ */
+int __isoc99_vsscanf(const char *str, const char *format, va_list ap)
+{
+	return handle_call(__isoc99_vsscanf, int, -1, ENOMEM, str, format, ap);
+}
+
+int __isoc99_vfscanf(FILE *stream, const char *format, va_list ap)
+{
+	struct hash_entry *h;
+
+	if (!force_libc && should_fail("vfscanf")) {
+		force_libc = true;
+		h = create_hash_entry();
+		h->hash = (intptr_t)stream;
+		hash_table_insert(h, ferror_table);
+		errno = EIO;
+		force_libc = false;
+		return EOF;
+	}
+
+	return call_super(__isoc99_vfscanf, int, stream, format, ap);
+}
+
+int __isoc99_sscanf(const char *str, const char *format, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, format);
+	ret = __isoc99_vsscanf(str, format, ap);
+	va_end(ap);
+
+	return ret;
+}
+
+int __isoc99_fscanf(FILE *stream, const char *format, ...)
+{
+	va_list ap;
+	int ret;
+
+	va_start(ap, format);
+	ret = __isoc99_vfscanf(stream, format, ap);
+	va_end(ap);
+
+	return ret;
+}
+#endif
 
 static void print_leak(struct hash_entry *h, const char *msg)
 {
