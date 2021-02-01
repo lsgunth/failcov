@@ -782,6 +782,59 @@ size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 	return call_super(fread, size_t, ptr, size, nmemb, stream);
 }
 
+ssize_t getline(char **lineptr, size_t *n, FILE *stream)
+{
+	char *old = *lineptr;
+	ssize_t ret;
+
+	ret = handle_call(getline, ssize_t, -1, ENOMEM, lineptr, n, stream);
+	if (old != *lineptr) {
+		track_destroy((intptr_t)old, allocation_table,
+			      PFX "IGNORE_UNTRACKED_FREES",
+			      PFX "IGNORE_ALL_UNTRACKED_FREES",
+			      TAG "Attempted to  untracked pointer 0x%llx at:\n");
+		track_create((intptr_t)*lineptr, allocation_table);
+	}
+
+	return ret;
+}
+
+ssize_t __getdelim(char **lineptr, size_t *n, int delim, FILE *stream)
+{
+	char *old = *lineptr;
+	ssize_t ret;
+
+	ret = handle_call(__getdelim, ssize_t, -1, ENOMEM, lineptr, n,
+			  delim, stream);
+	if (old != *lineptr) {
+		track_destroy((intptr_t)old, allocation_table,
+			      PFX "IGNORE_UNTRACKED_FREES",
+			      PFX "IGNORE_ALL_UNTRACKED_FREES",
+			      TAG "Attempted to realloc untracked pointer 0x%llx at:\n");
+		track_create((intptr_t)*lineptr, allocation_table);
+	}
+
+	return ret;
+}
+
+ssize_t getdelim(char **lineptr, size_t *n, int delim, FILE *stream)
+{
+	char *old = *lineptr;
+	ssize_t ret;
+
+	ret = handle_call(getdelim, ssize_t, -1, ENOMEM, lineptr, n,
+			  delim, stream);
+	if (old != *lineptr) {
+		track_destroy((intptr_t)old, allocation_table,
+			      PFX "IGNORE_UNTRACKED_FREES",
+			      PFX "IGNORE_ALL_UNTRACKED_FREES",
+			      TAG "Attempted to realloc untracked pointer 0x%llx at:\n");
+		track_create((intptr_t)*lineptr, allocation_table);
+	}
+
+	return ret;
+}
+
 int ferror(FILE *stream)
 {
 	if (!force_libc && hash_table_find((intptr_t)stream, ferror_table))
