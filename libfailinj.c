@@ -761,17 +761,22 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 			   stream);
 }
 
-size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+static void flag_ferror(FILE *stream)
 {
 	struct hash_entry *h;
 
+	force_libc = true;
+	h = create_hash_entry();
+	h->hash = (intptr_t)stream;
+	hash_table_insert(h, ferror_table);
+	force_libc = false;
+}
+
+size_t fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
+{
 	if (!force_libc && should_fail("fread")) {
-		force_libc = true;
-		h = create_hash_entry();
-		h->hash = (intptr_t)stream;
-		hash_table_insert(h, ferror_table);
+		flag_ferror(stream);
 		errno = EIO;
-		force_libc = false;
 		return 0;
 	}
 
@@ -891,15 +896,9 @@ int vsscanf(const char *str, const char *format, va_list ap)
 
 int vfscanf(FILE *stream, const char *format, va_list ap)
 {
-	struct hash_entry *h;
-
 	if (!force_libc && should_fail("vfscanf")) {
-		force_libc = true;
-		h = create_hash_entry();
-		h->hash = (intptr_t)stream;
-		hash_table_insert(h, ferror_table);
+		flag_ferror(stream);
 		errno = EIO;
-		force_libc = false;
 		return EOF;
 	}
 
@@ -919,15 +918,9 @@ int __isoc99_vsscanf(const char *str, const char *format, va_list ap)
 
 int __isoc99_vfscanf(FILE *stream, const char *format, va_list ap)
 {
-	struct hash_entry *h;
-
 	if (!force_libc && should_fail("vfscanf")) {
-		force_libc = true;
-		h = create_hash_entry();
-		h->hash = (intptr_t)stream;
-		hash_table_insert(h, ferror_table);
+		flag_ferror(stream);
 		errno = EIO;
-		force_libc = false;
 		return EOF;
 	}
 
