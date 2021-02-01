@@ -450,7 +450,7 @@ static void track_create(unsigned long long hash,
 {
 	struct hash_entry *h;
 
-	if (force_libc)
+	if (force_libc || !hash)
 		return;
 
 	force_libc = true;
@@ -470,7 +470,7 @@ static void track_destroy(unsigned long long hash, struct hash_entry **table,
 	struct hash_entry *h;
 	char *backtrace;
 
-	if (force_libc)
+	if (force_libc || !hash)
 		return;
 
 	force_libc = true;
@@ -603,11 +603,10 @@ void *realloc(void *ptr, size_t size)
 void free(void *ptr)
 {
 	call_super_void(free, ptr);
-	if (ptr)
-		track_destroy((intptr_t)ptr, allocation_table,
-			      PFX "IGNORE_UNTRACKED_FREES",
-			      PFX "IGNORE_ALL_UNTRACKED_FREES",
-			      TAG "Attempted to free untracked pointer 0x%llx at:\n");
+	track_destroy((intptr_t)ptr, allocation_table,
+		      PFX "IGNORE_UNTRACKED_FREES",
+		      PFX "IGNORE_ALL_UNTRACKED_FREES",
+		      TAG "Attempted to free untracked pointer 0x%llx at:\n");
 }
 
 int creat(const char *pathname, mode_t mode)
