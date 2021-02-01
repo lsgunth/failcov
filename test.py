@@ -42,6 +42,8 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.FILE_LEAK,           "Unable to write to /dev/null"),
         (TestCode.FILE_LEAK,           "Unable to read from /dev/null"),
         (TestCode.FILE_LEAK,           "Unable to scan from /dev/null"),
+        (TestCode.FILE_LEAK,           "getline failure"),
+        (TestCode.FILE_LEAK,           "getdelim failure"),
         (TestCode.FILE_LEAK,           "Error while flushing to /dev/null"),
         (TestCode.EXPECTED_ERROR,      "Error while to closing /dev/null"),
         (TestCode.EXPECTED_ERROR,      "sscanf failed"),
@@ -69,6 +71,9 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.EXPECTED_ERROR,      "sscanf failed"),
         (TestCode.EXPECTED_ERROR,      "Could not open /dev/zero"),
         (TestCode.EXPECTED_ERROR,      "fscanf failed"),
+        (TestCode.SUCCESS,             "fclose failure"),
+        (TestCode.EXPECTED_ERROR,      "Could not open /dev/null"),
+        (TestCode.EXPECTED_ERROR,      "getline failure"),
         (TestCode.SUCCESS,             "fclose failure"),
         (TestCode.FAILINJ_DONE,        "no fails"),
     ]

@@ -3,6 +3,7 @@
 
 #define _GNU_SOURCE
 
+#include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -71,6 +72,8 @@ static int test_openat(void)
 
 static int test_stdio(void *x)
 {
+	char *line = NULL;
+	size_t len;
 	ssize_t cnt;
 	FILE *f;
 	int ret;
@@ -100,6 +103,27 @@ static int test_stdio(void *x)
 		clearerr(f);
 		return 1;
 	}
+
+	errno = 0;
+	cnt = getline(&line, &len, f);
+	if (cnt < 0 && errno) {
+		perror("getline failure");
+		free(line);
+		return 1;
+	}
+
+	free(line);
+	line = NULL;
+
+	errno = 0;
+	cnt = getdelim(&line, &len, ';', f);
+	if (cnt < 0 && errno) {
+		perror("getdelim failure");
+		free(line);
+		return 1;
+	}
+
+	free(line);
 
 	ret = fflush(f);
 	if (ret == EOF) {
