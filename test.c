@@ -123,7 +123,6 @@ static volatile int test_scanf(void)
 
 	rc = sscanf(test, "Hello: %d", &x);
 	if (rc != 1) {
-		fprintf(stderr, "%d\n", rc);
 		perror("sscanf failed");
 		return 1;
 	}

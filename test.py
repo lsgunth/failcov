@@ -65,6 +65,14 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.FAILINJ_DONE,        "no failures"),
     ]
 
+    _expected_test3_codes = [
+        (TestCode.EXPECTED_ERROR,      "sscanf failed"),
+        (TestCode.EXPECTED_ERROR,      "Could not open /dev/zero"),
+        (TestCode.EXPECTED_ERROR,      "fscanf failed"),
+        (TestCode.SUCCESS,             "fclose failure"),
+        (TestCode.FAILINJ_DONE,        "no fails"),
+    ]
+
     def _run_test(self, db, env=None, payload=None, args=[]):
         if payload is None:
             payload = "./test"
@@ -82,8 +90,8 @@ class FailCovTestCase(unittest.TestCase):
         print(p.stdout)
         return p
 
-    def expected_codes(self, env):
-        for ec, title in self._expected_codes:
+    def expected_codes(self, env, expected_codes=[]):
+        for ec, title in expected_codes:
             if ec == TestCode.MEM_LEAK:
                 if "FAILINJ_IGNORE_ALL_MEM_LEAKS" in env:
                     yield TestCode.EXPECTED_ERROR, title
@@ -117,11 +125,15 @@ class FailCovTestCase(unittest.TestCase):
             else:
                 yield ec, title
 
-    def run_tests(self, env={}):
+    def run_tests(self, payload=None, env={}, expected_codes=None):
+        if expected_codes is None:
+            expected_codes = self._expected_codes
+
         with tempfile.NamedTemporaryFile() as db:
-            for i, (ec, t) in enumerate(self.expected_codes(env)):
+            exp = self.expected_codes(env, expected_codes)
+            for i, (ec, t) in enumerate(exp):
                 with self.subTest(t):
-                    p = self._run_test(db.name, env=env)
+                    p = self._run_test(db.name, env=env, payload=payload)
                     if ec != p.returncode:
                         print(f" ----- {i}: {t} -----")
                         print(p.stdout)
@@ -166,6 +178,10 @@ class FailCovTestCase(unittest.TestCase):
         self.run_test(None)
         self.run_test(None)
         os.unlink("failinj.db")
+
+    def test_test3(self):
+        self.run_tests(payload="./test3",
+                       expected_codes=self._expected_test3_codes)
 
     def check_no_segfault(self, db, iterations=25, payload=None, env=None,
                           allow_failinj_err=False):
