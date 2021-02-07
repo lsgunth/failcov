@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -291,6 +292,29 @@ static int test_realloc(void)
 	return 0;
 }
 
+static int test_mmap(void)
+{
+	const size_t sz = 4096;
+	void *x;
+	int rc;
+
+	x = mmap(NULL, sz, PROT_READ | PROT_WRITE,
+		 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	if (x == MAP_FAILED) {
+		perror("Unable to mmap memory");
+		return 1;
+	}
+
+	rc = mprotect(x, sz, PROT_READ | PROT_EXEC);
+	if (rc) {
+		perror("mprotect failed");
+		return 1;
+	}
+
+	munmap(x, sz);
+	return 0;
+}
+
 __attribute__ ((noinline))
 static int test_ignore_leak(void)
 {
@@ -349,7 +373,6 @@ static int test_hash_table(void)
 	return ret;
 }
 
-
 int main(int argc, char *argv[])
 {
 	void *x, *y;
@@ -403,6 +426,10 @@ int main(int argc, char *argv[])
 		goto out;
 
 	ret = test_realloc();
+	if (ret)
+		goto out;
+
+	ret = test_mmap();
 	if (ret)
 		goto out;
 
