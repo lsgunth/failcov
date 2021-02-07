@@ -38,6 +38,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -1003,6 +1004,34 @@ int __isoc99_fscanf(FILE *stream, const char *format, ...)
 	return ret;
 }
 #endif
+
+int mprotect(void *addr, size_t len, int prot)
+{
+	return handle_call(mprotect, int, -1, ENOMEM, addr, len, prot);
+}
+
+void *mmap(void *addr, size_t length, int prot, int flags, int fd,
+	   off_t offset)
+{
+	void *ret;
+
+	ret = handle_call(mmap, void *, MAP_FAILED, ENOMEM, addr, length, prot,
+			  flags, fd, offset);
+	if (ret != MAP_FAILED)
+		track_create((intptr_t)ret, allocation_table);
+
+	return ret;
+}
+
+int munmap(void *addr, size_t length)
+{
+	call_super_void(munmap, addr, length);
+	track_destroy((intptr_t)addr, allocation_table,
+		      PFX "IGNORE_UNTRACKED_FREES",
+		      PFX "IGNORE_ALL_UNTRACKED_FREES",
+		      TAG "Attempted to munmap untracked pointer 0x%llx at:\n");
+	return 0;
+}
 
 static void print_leak(struct hash_entry *h, const char *msg)
 {
