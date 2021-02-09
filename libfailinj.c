@@ -1033,6 +1033,14 @@ int munmap(void *addr, size_t length)
 	return 0;
 }
 
+long syscall(long int syscall_number, long int arg1, long int arg2,
+	     long int arg3, long int arg4, long int arg5, long int arg6,
+	     long int arg7)
+{
+	return handle_call(syscall, long, -1, ENOTSUP, syscall_number,
+			   arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
 static void print_leak(struct hash_entry *h, const char *msg)
 {
 	found_bug = true;
