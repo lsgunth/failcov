@@ -59,6 +59,7 @@ class FailCovTestCase(unittest.TestCase):
         (TestCode.EXPECTED_ERROR,      "Unable to reallocarray memory"),
         (TestCode.EXPECTED_ERROR,      "Unable to mmap memory"),
         (TestCode.MEM_LEAK,            "mprotect failed"),
+        (TestCode.EXPECTED_ERROR,      "sync failed"),
         (TestCode.EXPECTED_ERROR,      "Unable to allocate leaked memory"),
         (TestCode.IGNORE_MEM_LEAK,     "Unable to allocate ignored leak memory"),
         (TestCode.SKIPPED,             "Unable to allocate skipped malloc"),

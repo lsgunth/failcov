@@ -3,6 +3,7 @@
 
 #define _GNU_SOURCE
 
+#include <asm/unistd.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <stdlib.h>
@@ -315,6 +316,19 @@ static int test_mmap(void)
 	return 0;
 }
 
+static int test_syscall(void)
+{
+	int rc;
+
+	rc = syscall(__NR_sync);
+	if (rc == -1) {
+		perror("sync failed");
+		return 1;
+	}
+
+	return 0;
+}
+
 __attribute__ ((noinline))
 static int test_ignore_leak(void)
 {
@@ -430,6 +444,10 @@ int main(int argc, char *argv[])
 		goto out;
 
 	ret = test_mmap();
+	if (ret)
+		goto out;
+
+	ret = test_syscall();
 	if (ret)
 		goto out;
 
